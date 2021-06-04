@@ -59,27 +59,45 @@
         }
     }
 
-    function isGif(fileType) {
-        return Object.keys(GIF_VERSION).includes(fileType);
+    var GIF_VERSION;
+    (function (GIF_VERSION) {
+        GIF_VERSION["GIF87a"] = "GIF87a";
+        GIF_VERSION["GIF89a"] = "GIF89a";
+    })(GIF_VERSION || (GIF_VERSION = {}));
+
+    function isGif(version) {
+        return Object.keys(GIF_VERSION).includes(version);
     }
 
+    function getLogicalScreen(arrayBuffer) {
+        var dataView = new DataView(arrayBuffer);
+        console.log(new Uint8Array(arrayBuffer));
+        var width = dataView.getUint16(1);
+        var height = dataView.getUint16(2);
+        return {
+            width: width,
+            height: height
+        };
+    }
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var arrayBuffer, headerBuffer, decoder, fileType;
+            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, blob.arrayBuffer()
-                        // 获取前6个字节判断文件类型
+                        // 文件类型 6 个字节
                     ];
                     case 1:
                         arrayBuffer = _a.sent();
                         headerBuffer = arrayBuffer.slice(0, 6);
                         decoder = new TextDecoder('utf8');
-                        fileType = decoder.decode(headerBuffer);
-                        if (!isGif(fileType)) {
+                        version = decoder.decode(headerBuffer);
+                        if (!isGif(version)) {
                             return [2 /*return*/, console.error('Not Gif!')];
                         }
-                        console.log(fileType, "GIF89a" /* GIF89a */ === fileType);
+                        logicalScreenBuffer = arrayBuffer.slice(6, 13);
+                        logicalScreeDescriptor = getLogicalScreen(logicalScreenBuffer);
+                        console.log(logicalScreeDescriptor);
                         return [2 /*return*/];
                 }
             });
