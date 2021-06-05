@@ -65,11 +65,16 @@
         return to;
     }
 
+    // GIF 版本
     var GIF_VERSION;
     (function (GIF_VERSION) {
         GIF_VERSION["GIF87a"] = "GIF87a";
         GIF_VERSION["GIF89a"] = "GIF89a";
     })(GIF_VERSION || (GIF_VERSION = {}));
+    // 头部字节长度
+    var HEADER_BYTE_LENGTH = 6;
+    // 屏幕逻辑描述符字节长度
+    var LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH = 13;
 
     /**
      * 判断是否为 Gif 格式文件
@@ -83,16 +88,37 @@
      * @param value 十进制值
      */
     function decimalToBinary(value) {
-        var binaryString = value.toString(2);
-        var binaryArray = binaryString.split('').map(function (bs) { return parseInt(bs); });
+        var binaryArray = value.toString(2).split('').map(function (bs) { return parseInt(bs); });
         return __spreadArray(__spreadArray([], new Array(8 - binaryArray.length).fill(0)), binaryArray);
+    }
+    /**
+     * 格式化数据颜色
+     * @param colorArray
+     */
+    function formatColors(colorArray) {
+        return colorArray.reduce(function (acc, cur, index) {
+            var i = index % 3;
+            switch (i) {
+                case 0:
+                    acc.push({ r: cur, g: 0, b: 0 });
+                    break;
+                case 1:
+                    Object.assign(acc[acc.length - 1], { g: cur });
+                    break;
+                case 2:
+                    Object.assign(acc[acc.length - 1], { b: cur });
+                    break;
+            }
+            return acc;
+        }, []);
     }
 
     /**
      * 解析逻辑屏幕描述符
      * @param arrayBuffer
      */
-    function parseLogicalScreenDescriptor(arrayBuffer) {
+    function decodeLogicalScreenDescriptor(arrayBuffer) {
+        // 创建数据视图
         var dataView = new DataView(arrayBuffer);
         // 以低字节序读取两个字节为宽
         var width = dataView.getUint16(0, true);
@@ -105,11 +131,11 @@
         // 全局颜色表标识
         var globalColorTableFlag = Boolean(fieldBinary[0]);
         // 颜色分辨率
-        var colorResolution = parseInt(fieldBinary.slice(1, 4).join()) + 1;
+        var colorResolution = parseInt(fieldBinary.slice(1, 4).join(''));
         // 排序标志，可忽略这个标识
         var sortFlag = fieldBinary[4];
         // 全局颜色表大小
-        var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join()) + 1;
+        var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join('')) + 1;
         // 背景颜色索引
         var backgroundColorIndex = dataView.getUint8(5);
         // 像素宽高比
@@ -127,25 +153,37 @@
             pixelAspectRatio: pixelAspectRatio
         };
     }
+    /**
+     * 解码器
+     * @param blob 图像数据
+     */
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor, _a, globalColorTableFlag, globalColorTableSize, globalColorTableLength, globalColorTableBuffer, globalRGBColors;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0: return [4 /*yield*/, blob.arrayBuffer()
                         // 文件类型 6 个字节
                     ];
                     case 1:
-                        arrayBuffer = _a.sent();
-                        headerBuffer = arrayBuffer.slice(0, 6);
+                        arrayBuffer = _b.sent();
+                        headerBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH);
                         decoder = new TextDecoder('utf8');
                         version = decoder.decode(headerBuffer);
                         if (!isGif(version)) {
                             return [2 /*return*/, console.error('Not Gif!')];
                         }
-                        logicalScreenBuffer = arrayBuffer.slice(6, 13);
-                        logicalScreeDescriptor = parseLogicalScreenDescriptor(logicalScreenBuffer);
+                        logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH);
+                        logicalScreeDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer);
+                        _a = logicalScreeDescriptor.packedField, globalColorTableFlag = _a.globalColorTableFlag, globalColorTableSize = _a.globalColorTableSize;
                         console.log(logicalScreeDescriptor);
+                        // 如果存在全局色彩表则进行解析
+                        if (globalColorTableFlag) {
+                            globalColorTableLength = 3 * Math.pow(2, globalColorTableSize);
+                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength);
+                            globalRGBColors = formatColors(new Uint8Array(globalColorTableBuffer));
+                            console.log(globalRGBColors);
+                        }
                         return [2 /*return*/];
                 }
             });

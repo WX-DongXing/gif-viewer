@@ -1,4 +1,5 @@
 import { GIF_VERSION } from './constant'
+import { RGB } from './types'
 
 /**
  * 判断是否为 Gif 格式文件
@@ -13,12 +14,34 @@ function isGif (version: string): boolean {
  * @param value 十进制值
  */
 function decimalToBinary(value: number): number[] {
-  const binaryString = value.toString(2)
-  const binaryArray = binaryString.split('').map(bs => parseInt(bs))
+  const binaryArray = value.toString(2).split('').map(bs => parseInt(bs))
   return [...new Array(8 - binaryArray.length).fill(0), ...binaryArray]
+}
+
+/**
+ * 格式化数据颜色
+ * @param colorArray
+ */
+function formatColors(colorArray: Uint8Array): RGB[] {
+  return colorArray.reduce((acc: RGB[], cur: number, index: number) => {
+    const i = index % 3
+    switch (i) {
+      case 0:
+        acc.push({ r: cur, g: 0, b: 0 })
+        break
+      case 1:
+        Object.assign(acc[acc.length - 1], { g: cur })
+        break
+      case 2:
+        Object.assign(acc[acc.length - 1], { b: cur })
+        break
+    }
+    return acc
+  }, [])
 }
 
 export {
   isGif,
-  decimalToBinary
+  decimalToBinary,
+  formatColors
 }

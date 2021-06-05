@@ -20,7 +20,14 @@ interface Gif {
   readonly logicalScreenDescriptor: LogicalScreenDescriptor
 }
 
+interface RGB {
+  r: number
+  g: number
+  b: number
+}
+
 export {
   Gif,
-  LogicalScreenDescriptor
+  LogicalScreenDescriptor,
+  RGB
 }
