@@ -59,24 +59,72 @@
         }
     }
 
+    function __spreadArray(to, from) {
+        for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
+            to[j] = from[i];
+        return to;
+    }
+
     var GIF_VERSION;
     (function (GIF_VERSION) {
         GIF_VERSION["GIF87a"] = "GIF87a";
         GIF_VERSION["GIF89a"] = "GIF89a";
     })(GIF_VERSION || (GIF_VERSION = {}));
 
+    /**
+     * 判断是否为 Gif 格式文件
+     * @param version 文件头
+     */
     function isGif(version) {
         return Object.keys(GIF_VERSION).includes(version);
     }
+    /**
+     * 十进制转八位二进制数组
+     * @param value 十进制值
+     */
+    function decimalToBinary(value) {
+        var binaryString = value.toString(2);
+        var binaryArray = binaryString.split('').map(function (bs) { return parseInt(bs); });
+        return __spreadArray(__spreadArray([], new Array(8 - binaryArray.length).fill(0)), binaryArray);
+    }
 
-    function getLogicalScreen(arrayBuffer) {
+    /**
+     * 解析逻辑屏幕描述符
+     * @param arrayBuffer
+     */
+    function parseLogicalScreenDescriptor(arrayBuffer) {
         var dataView = new DataView(arrayBuffer);
-        console.log(new Uint8Array(arrayBuffer));
-        var width = dataView.getUint16(1);
-        var height = dataView.getUint16(2);
+        // 以低字节序读取两个字节为宽
+        var width = dataView.getUint16(0, true);
+        // 以低字节序读取两个字节为高
+        var height = dataView.getUint16(2, true);
+        // 获取打包字段
+        var packedField = dataView.getUint8(4);
+        // 解析打包字段
+        var fieldBinary = decimalToBinary(packedField);
+        // 全局颜色表标识
+        var globalColorTableFlag = Boolean(fieldBinary[0]);
+        // 颜色分辨率
+        var colorResolution = parseInt(fieldBinary.slice(1, 4).join()) + 1;
+        // 排序标志，可忽略这个标识
+        var sortFlag = fieldBinary[4];
+        // 全局颜色表大小
+        var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join()) + 1;
+        // 背景颜色索引
+        var backgroundColorIndex = dataView.getUint8(5);
+        // 像素宽高比
+        var pixelAspectRatio = dataView.getUint8(6);
         return {
             width: width,
-            height: height
+            height: height,
+            packedField: {
+                globalColorTableFlag: globalColorTableFlag,
+                colorResolution: colorResolution,
+                sortFlag: sortFlag,
+                globalColorTableSize: globalColorTableSize
+            },
+            backgroundColorIndex: backgroundColorIndex,
+            pixelAspectRatio: pixelAspectRatio
         };
     }
     function decoder(blob) {
@@ -96,7 +144,7 @@
                             return [2 /*return*/, console.error('Not Gif!')];
                         }
                         logicalScreenBuffer = arrayBuffer.slice(6, 13);
-                        logicalScreeDescriptor = getLogicalScreen(logicalScreenBuffer);
+                        logicalScreeDescriptor = parseLogicalScreenDescriptor(logicalScreenBuffer);
                         console.log(logicalScreeDescriptor);
                         return [2 /*return*/];
                 }
