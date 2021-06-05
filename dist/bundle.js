@@ -71,10 +71,28 @@
         GIF_VERSION["GIF87a"] = "GIF87a";
         GIF_VERSION["GIF89a"] = "GIF89a";
     })(GIF_VERSION || (GIF_VERSION = {}));
+    // 扩展类型
+    var EXTENSION_TYPE;
+    (function (EXTENSION_TYPE) {
+        EXTENSION_TYPE[EXTENSION_TYPE["graphics_control"] = 0] = "graphics_control";
+        EXTENSION_TYPE[EXTENSION_TYPE["plain_text"] = 1] = "plain_text";
+        EXTENSION_TYPE[EXTENSION_TYPE["application"] = 2] = "application";
+        EXTENSION_TYPE[EXTENSION_TYPE["comment"] = 3] = "comment";
+    })(EXTENSION_TYPE || (EXTENSION_TYPE = {}));
     // 头部字节长度
     var HEADER_BYTE_LENGTH = 6;
     // 屏幕逻辑描述符字节长度
     var LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH = 13;
+    // 扩展标识
+    var EXTENSION_FLAG = 33;
+    // 图像控制扩展标识
+    var GRAPHICS_CONTROL_EXTENSION_FLAG = 249;
+    // 文本扩展标识
+    var PLAIN_TEXT_EXTENSION_FLAG = 1;
+    // 应用扩展标识
+    var APPLICATION_EXTENSION_FLAG = 255;
+    // 注释扩展标识
+    var COMMENT_EXTENSION_FLAG = 254;
 
     /**
      * 判断是否为 Gif 格式文件
@@ -112,6 +130,66 @@
             return acc;
         }, []);
     }
+
+    /**
+     * 图形控制扩展解码器
+     * @param buffer
+     */
+    function graphicsControlExtensionDecoder(buffer) {
+        var dataView = new DataView(buffer);
+        // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
+        var byteLength = dataView.getUint8(2) + 4;
+        // 打包字段
+        var packedField = dataView.getUint8(3);
+        // 解析打包字段
+        var fieldBinary = decimalToBinary(packedField);
+        // 保留字段
+        var reserved = parseInt(fieldBinary.slice(0, 3).join(''));
+        // 处置方法
+        var disposalMethod = parseInt(fieldBinary.slice(3, 6).join(''));
+        // 用户输入标识
+        var userInputFlag = fieldBinary[6];
+        // 透明颜色标识
+        var transparentColorFlag = fieldBinary[7];
+        // 延时时间
+        var delayTime = dataView.getUint16(4);
+        // 透明颜色索引
+        var transparentColorIndex = dataView.getUint8(6);
+        return {
+            name: 'graphics control extension',
+            type: EXTENSION_TYPE.graphics_control,
+            byteLength: byteLength,
+            packedField: {
+                reserved: reserved,
+                disposalMethod: disposalMethod,
+                userInputFlag: userInputFlag,
+                transparentColorFlag: transparentColorFlag
+            },
+            delayTime: delayTime,
+            transparentColorIndex: transparentColorIndex
+        };
+    }
+
+    /**
+     * 扩展工厂函数
+     */
+    var ExtensionFactory = /** @class */ (function () {
+        function ExtensionFactory() {
+        }
+        ExtensionFactory.create = function (extensionFlag) {
+            switch (extensionFlag) {
+                case GRAPHICS_CONTROL_EXTENSION_FLAG:
+                    return graphicsControlExtensionDecoder;
+                case PLAIN_TEXT_EXTENSION_FLAG:
+                    return;
+                case APPLICATION_EXTENSION_FLAG:
+                    return;
+                case COMMENT_EXTENSION_FLAG:
+                    return;
+            }
+        };
+        return ExtensionFactory;
+    }());
 
     /**
      * 解析逻辑屏幕描述符
@@ -154,12 +232,29 @@
         };
     }
     /**
+     * 解析子图像组数据
+     * @param subImageBuffer
+     */
+    function decodeSubImages(subImageBuffer) {
+        var subDataView = new DataView(subImageBuffer);
+        // 读取第一个字节判断标识
+        var flag = subDataView.getUint8(0);
+        // 如果是描述符标识则解析描述符
+        if (flag === EXTENSION_FLAG) {
+            // 扩展标识后一个字节判断扩展类型
+            var extensionFlag = subDataView.getUint8(1);
+            var extensionDecoder = ExtensionFactory.create(extensionFlag);
+            var extension = extensionDecoder(subImageBuffer);
+            console.log(extension);
+        }
+    }
+    /**
      * 解码器
      * @param blob 图像数据
      */
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor, _a, globalColorTableFlag, globalColorTableSize, globalColorTableLength, globalColorTableBuffer, globalRGBColors;
+            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor, _a, globalColorTableFlag, globalColorTableSize, parsedByteLength, globalColorTableLength, globalColorTableBuffer, subImageBuffer;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0: return [4 /*yield*/, blob.arrayBuffer()
@@ -176,14 +271,16 @@
                         logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH);
                         logicalScreeDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer);
                         _a = logicalScreeDescriptor.packedField, globalColorTableFlag = _a.globalColorTableFlag, globalColorTableSize = _a.globalColorTableSize;
-                        console.log(logicalScreeDescriptor);
+                        parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH;
                         // 如果存在全局色彩表则进行解析
                         if (globalColorTableFlag) {
                             globalColorTableLength = 3 * Math.pow(2, globalColorTableSize);
-                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength);
-                            globalRGBColors = formatColors(new Uint8Array(globalColorTableBuffer));
-                            console.log(globalRGBColors);
+                            parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength;
+                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, parsedByteLength);
+                            formatColors(new Uint8Array(globalColorTableBuffer));
                         }
+                        subImageBuffer = arrayBuffer.slice(parsedByteLength, arrayBuffer.byteLength - 1);
+                        decodeSubImages(subImageBuffer);
                         return [2 /*return*/];
                 }
             });

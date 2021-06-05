@@ -1,6 +1,9 @@
 import { isGif, decimalToBinary, formatColors } from './utils'
-import {Gif, LogicalScreenDescriptor, RGB} from './types';
-import { HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH } from './constant'
+import {Extension, Gif, LogicalScreenDescriptor, RGB} from './types';
+import {
+  EXTENSION_FLAG, HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
+} from './constant'
+import {ExtensionFactory} from "./factory";
 
 /**
  * 解析逻辑屏幕描述符
@@ -56,6 +59,31 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
 }
 
 /**
+ * 解析子图像组数据
+ * @param subImageBuffer
+ */
+function decodeSubImages (subImageBuffer: ArrayBuffer): void {
+  let decodeByteLength = 0
+
+  const subDataView: DataView = new DataView(subImageBuffer)
+
+  // 读取第一个字节判断标识
+  const flag: number = subDataView.getUint8(0)
+
+  // 如果是描述符标识则解析描述符
+  if (flag === EXTENSION_FLAG) {
+    // 扩展标识后一个字节判断扩展类型
+    const extensionFlag = subDataView.getUint8(1)
+
+    const extensionDecoder = ExtensionFactory.create(extensionFlag)
+
+    const extension: Extension = extensionDecoder(subImageBuffer)
+
+    console.log(extension)
+  }
+}
+
+/**
  * 解码器
  * @param blob 图像数据
  */
@@ -83,7 +111,8 @@ async function decoder (blob: Blob): Promise<Gif | void> {
 
   const { globalColorTableFlag, globalColorTableSize } = logicalScreeDescriptor.packedField
 
-  console.log(logicalScreeDescriptor)
+  // 解析字节数
+  let parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
 
   // 如果存在全局色彩表则进行解析
   if (globalColorTableFlag) {
@@ -91,13 +120,19 @@ async function decoder (blob: Blob): Promise<Gif | void> {
     // 全局色彩表字节长度
     const globalColorTableLength: number = 3 * Math.pow(2, globalColorTableSize)
 
+    parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength
+
     // 全局色彩表数据
-    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength)
+    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, parsedByteLength)
 
     // 全局色彩比RGB
     const globalRGBColors: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
-    console.log(globalRGBColors)
   }
+
+  // 子图像组
+  const subImageBuffer = arrayBuffer.slice(parsedByteLength, arrayBuffer.byteLength - 1)
+
+  decodeSubImages(subImageBuffer)
 }
 
 export default { decoder }

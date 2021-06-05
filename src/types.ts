@@ -1,4 +1,4 @@
-import { GIF_VERSION } from './constant'
+import {EXTENSION_TYPE, GIF_VERSION} from './constant'
 
 interface LogicalPackedField {
   globalColorTableFlag: boolean
@@ -26,8 +26,27 @@ interface RGB {
   b: number
 }
 
+interface ExtensionPackedField {
+  // graphics control
+  reserved?: number
+  disposalMethod?: number
+  userInputFlag?: number
+  transparentColorFlag?: number
+}
+
+interface Extension {
+  name: string
+  type: EXTENSION_TYPE
+  byteLength: number
+  packedField: ExtensionPackedField
+  // graphics control
+  delayTime?: number
+  transparentColorIndex?: number
+}
+
 export {
   Gif,
   LogicalScreenDescriptor,
-  RGB
+  RGB,
+  Extension
 }
