@@ -30,13 +30,13 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
   const globalColorTableFlag = Boolean(fieldBinary[0])
 
   // 颜色分辨率
-  const colorResolution: number = parseInt(fieldBinary.slice(1, 4).join(''))
+  const colorResolution: number = parseInt(fieldBinary.slice(1, 4).join(''), 2)
 
   // 排序标志，可忽略这个标识
   const sortFlag: number = fieldBinary[4]
 
   // 全局颜色表大小
-  const globalColorTableSize: number = parseInt(fieldBinary.slice(5, 8).join('')) + 1
+  const globalColorTableSize: number = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1
 
   // 背景颜色索引
   const backgroundColorIndex: number = dataView.getUint8(5)

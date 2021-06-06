@@ -3,7 +3,7 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
     typeof define === 'function' && define.amd ? define(factory) :
-    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.gifDecoder = factory());
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.gifViewer = factory());
 }(this, (function () { 'use strict';
 
     /*! *****************************************************************************
@@ -209,11 +209,11 @@
         // 全局颜色表标识
         var globalColorTableFlag = Boolean(fieldBinary[0]);
         // 颜色分辨率
-        var colorResolution = parseInt(fieldBinary.slice(1, 4).join(''));
+        var colorResolution = parseInt(fieldBinary.slice(1, 4).join(''), 2);
         // 排序标志，可忽略这个标识
         var sortFlag = fieldBinary[4];
         // 全局颜色表大小
-        var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join('')) + 1;
+        var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1;
         // 背景颜色索引
         var backgroundColorIndex = dataView.getUint8(5);
         // 像素宽高比
