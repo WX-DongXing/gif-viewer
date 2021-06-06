@@ -8,7 +8,7 @@ export default {
   output: {
     file: 'dist/bundle.js',
     format: 'umd',
-    name: 'gifDecoder'
+    name: 'gifViewer'
   },
   plugins: [
     nodeResolve(),

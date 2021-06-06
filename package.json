@@ -1,7 +1,7 @@
 {
-  "name": "gif-decoder",
+  "name": "gif-viewer",
   "version": "0.1.0",
-  "description": "a gif decoder",
+  "description": "a gif viewer",
   "main": "index.js",
   "license": "MIT",
   "scripts": {

@@ -1,2 +1,2 @@
-# Gif Decoder
-a gif decoder
+# Gif Viewer
+a gif viewer
