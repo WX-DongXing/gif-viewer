@@ -1,5 +1,5 @@
 import { Extension } from './types'
-import { EXTENSION_TYPE } from './constant'
+import { EXTENSION_TYPE, PLAIN_TEXT_END_FLAG } from './constant'
 import { decimalToBinary } from './utils'
 
 /**
@@ -85,7 +85,32 @@ function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Ext
   }
 }
 
+function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+  let byteLength = 1
+
+  // 创建数据视图
+  const dataView: DataView = new DataView(arrayBuffer, offset)
+
+  while (byteLength < arrayBuffer.byteLength) {
+    // 文本数据字节长度
+    const textBufferLength: number = dataView.getUint8(byteLength += 1)
+
+    if (textBufferLength === PLAIN_TEXT_END_FLAG) break
+    byteLength += textBufferLength
+  }
+
+  // 结束标识（1字节）
+  byteLength += 1
+
+  return {
+    name: 'comment extension',
+    type: EXTENSION_TYPE.plain_text,
+    byteLength
+  }
+}
+
 export {
   graphicsControlExtensionDecoder,
+  plainTextExtensionDecoder,
   commentExtensionDecoder
 }

@@ -3,7 +3,10 @@ import {
   COMMENT_EXTENSION_FLAG
 } from './constant'
 
-import { graphicsControlExtensionDecoder, commentExtensionDecoder } from './extensions'
+import {
+  graphicsControlExtensionDecoder, plainTextExtensionDecoder,
+  commentExtensionDecoder
+} from './extensions'
 
 /**
  * 扩展工厂函数
@@ -14,7 +17,7 @@ class ExtensionFactory {
       case GRAPHICS_CONTROL_EXTENSION_FLAG:
         return graphicsControlExtensionDecoder
       case PLAIN_TEXT_EXTENSION_FLAG:
-        return
+        return plainTextExtensionDecoder
       case APPLICATION_EXTENSION_FLAG:
         return
       case COMMENT_EXTENSION_FLAG:
