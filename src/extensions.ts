@@ -33,7 +33,7 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: numb
   const transparentColorFlag: number = fieldBinary[7]
 
   // 延时时间
-  const delayTime: number = dataView.getUint16(4)
+  const delayTime: number = dataView.getUint16(4, true)
 
   // 透明颜色索引
   const transparentColorIndex: number = dataView.getUint8(6)

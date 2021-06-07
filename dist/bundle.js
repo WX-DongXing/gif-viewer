@@ -174,7 +174,7 @@
         // 透明颜色标识
         var transparentColorFlag = fieldBinary[7];
         // 延时时间
-        var delayTime = dataView.getUint16(4);
+        var delayTime = dataView.getUint16(4, true);
         // 透明颜色索引
         var transparentColorIndex = dataView.getUint8(6);
         return {
