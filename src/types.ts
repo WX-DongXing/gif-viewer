@@ -30,8 +30,10 @@ interface ExtensionPackedField {
 }
 
 interface Application {
-  from: number
-  to: number
+  version: string
+  from?: number
+  to?: number
+  data?: any[]
 }
 
 interface Extension {

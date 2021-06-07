@@ -1,5 +1,5 @@
 import { Extension } from './types'
-import { EXTENSION_TYPE, PLAIN_TEXT_END_FLAG } from './constant'
+import {APPLICATION_END_FLAG, APPLICATION_NETSCAPE, EXTENSION_TYPE, PLAIN_TEXT_END_FLAG} from './constant'
 import { decimalToBinary } from './utils'
 
 /**
@@ -59,38 +59,55 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: numb
  * @param offset
  */
 function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
-  let byteLength = 1
+  let byteLength = 2
 
   // 创建数据视图
   const dataView: DataView = new DataView(arrayBuffer, offset)
 
-  // 应用数据字节长度
-  const applicationByteLength = dataView.getUint8(byteLength += 1)
+  // 应用数据固定字节长度
+  const applicationFixedByteLength = dataView.getUint8(byteLength)
 
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
 
   // 应用扩展类型
-  const applicationVersion = ASCIIDecoder.decode(arrayBuffer.slice(offset + 3, offset + 3 + applicationByteLength))
+  const version = ASCIIDecoder.decode(arrayBuffer.slice(offset + byteLength + 1, offset + byteLength + 1 + applicationFixedByteLength))
 
-  console.log(applicationVersion)
-  // 循环数据长度
-  const loopByteLength: number = dataView.getUint8(byteLength += applicationByteLength + 1)
+  const application = { version, data: [] }
 
-  const from = dataView.getUint8(byteLength += 1)
+  byteLength += applicationFixedByteLength
 
-  const to = dataView.getUint16(byteLength += 1, true)
+  while (byteLength < arrayBuffer.byteLength) {
+    // 应用数据长度
+    const applicationByteLength: number = dataView.getUint8(byteLength += 1)
 
-  byteLength += 3
+    if (applicationByteLength === APPLICATION_END_FLAG) break
+
+    // 如果为 Netscape 2.0 应用扩展，三个字节
+    if (version === APPLICATION_NETSCAPE) {
+
+      // 第一个字节为1
+      const from = dataView.getUint8(byteLength += 1)
+
+      // 后两个字节为循环次数，0 为无限循环
+      const to = dataView.getUint16(byteLength += 1, true)
+
+      byteLength += 1
+
+      Object.assign(application, { from, to })
+    } else {
+      application.data.push(arrayBuffer.slice(offset + byteLength, offset + (byteLength += applicationByteLength)))
+    }
+  }
+
+  // 结束标识 （1字节）
+  byteLength += 1
 
   return {
     name: 'application extension',
     type: EXTENSION_TYPE.application,
     byteLength,
-    application: {
-      from,
-      to
-    }
+    application
   }
 }
 

@@ -166,8 +166,6 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
 
   const subDataView: DataView = new DataView(subImageBuffer)
 
-  console.log(new Uint8Array(subImageBuffer))
-
   while (byteLength < subImageBuffer.byteLength) {
 
     // 当前子图像
@@ -176,15 +174,11 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
     // 读取第一个字节判断标识
     const flag: number = subDataView.getUint8(byteLength)
 
-    console.log('flag: ', flag)
-
     // 如果是描述符标识则解析描述符
     if (flag === EXTENSION_FLAG) {
 
       // 扩展标识后一个字节判断扩展类型
       const extensionFlag = subDataView.getUint8(byteLength + 1)
-
-      console.log('extension flag: ', extensionFlag)
 
       // 根据扩展标识创建不同的扩展解析器
       const extensionDecoder = ExtensionFactory.create(extensionFlag)
