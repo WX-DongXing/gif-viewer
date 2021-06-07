@@ -7,5 +7,7 @@
 
   const blob = await (await fetch(GIF_SOURCE)).blob()
 
-  await decoder(blob)
+  const gif = await decoder(blob)
+
+  console.log(gif)
 })()

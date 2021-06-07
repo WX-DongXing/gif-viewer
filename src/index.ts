@@ -1,7 +1,11 @@
 import { isGif, decimalToBinary, formatColors } from './utils'
-import {Extension, Gif, LogicalScreenDescriptor, RGB} from './types';
+import {Extension, Gif, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage} from './types';
 import {
-  EXTENSION_FLAG, HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
+  EXTENSION_FLAG,
+  HEADER_BYTE_LENGTH, IMAGE_DESCRIPTOR_BYTE_LENGTH,
+  IMAGE_DESCRIPTOR_FLAG,
+  LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH,
+  TRAILER_FLAG
 } from './constant'
 import {ExtensionFactory} from "./factory";
 
@@ -27,7 +31,7 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
   const fieldBinary: number[] = decimalToBinary(packedField)
 
   // 全局颜色表标识
-  const globalColorTableFlag = Boolean(fieldBinary[0])
+  const globalColorTableFlag = fieldBinary[0]
 
   // 颜色分辨率
   const colorResolution: number = parseInt(fieldBinary.slice(1, 4).join(''), 2)
@@ -59,28 +63,149 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
 }
 
 /**
+ * 解析图像描述符
+ * @param arrayBuffer
+ */
+function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
+  // 数据视图
+  const dataView: DataView = new DataView(arrayBuffer)
+
+  // 水平偏移
+  const left: number = dataView.getUint16(1, true)
+
+  // 垂直偏移
+  const top: number = dataView.getUint16(3, true)
+
+  // 子图像宽度
+  const width: number = dataView.getUint16(5, true)
+
+  // 子图像高度
+  const height: number = dataView.getUint16(7, true)
+
+  // 获取打包字段
+  const packedField: number = dataView.getUint8(9)
+
+  // 解析打包字段
+  const fieldBinary: number[] = decimalToBinary(packedField)
+
+  // 本地色彩表标识
+  const localColorTableFlag: number = fieldBinary[0]
+
+  // 扫描标识
+  const interlaceFlag: number = fieldBinary[1]
+
+  // 分类标识
+  const sortFlag: number = fieldBinary[2]
+
+  // 保留位
+  const reserved: number = parseInt(fieldBinary.slice(3, 5).join(''), 2)
+
+  // 本地色彩表大小
+  const localColorTableSize: number = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1
+
+  return {
+    left,
+    top,
+    width,
+    height,
+    packedField: {
+      localColorTableFlag,
+      interlaceFlag,
+      sortFlag,
+      reserved,
+      localColorTableSize
+    }
+  }
+}
+
+/**
  * 解析子图像组数据
  * @param subImageBuffer
  */
-function decodeSubImages (subImageBuffer: ArrayBuffer): void {
-  let decodeByteLength = 0
+function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
+  // 已解析字节数
+  let parsedByteLength = 0
+
+  console.log(new Uint8Array(subImageBuffer))
+
+  // 子图像数据
+  const subImages: SubImage[] = [{}]
 
   const subDataView: DataView = new DataView(subImageBuffer)
 
-  // 读取第一个字节判断标识
-  const flag: number = subDataView.getUint8(0)
+  while (parsedByteLength < subImageBuffer.byteLength) {
 
-  // 如果是描述符标识则解析描述符
-  if (flag === EXTENSION_FLAG) {
-    // 扩展标识后一个字节判断扩展类型
-    const extensionFlag = subDataView.getUint8(1)
+    // 当前子图像
+    const subImage: SubImage = subImages[subImages.length - 1]
 
-    const extensionDecoder = ExtensionFactory.create(extensionFlag)
+    // 读取第一个字节判断标识
+    const flag: number = subDataView.getUint8(parsedByteLength)
 
-    const extension: Extension = extensionDecoder(subImageBuffer)
+    console.log('flag: ', flag)
 
-    console.log(extension)
+    // 如果是描述符标识则解析描述符
+    if (flag === EXTENSION_FLAG) {
+
+      // 扩展标识后一个字节判断扩展类型
+      const extensionFlag = subDataView.getUint8(parsedByteLength + 1)
+
+      // 根据扩展标识创建不同的扩展解析器
+      const extensionDecoder = ExtensionFactory.create(extensionFlag)
+
+      // 解析扩展
+      const extension: Extension = extensionDecoder(subImageBuffer)
+
+      if (subImage.extensions) {
+        subImage.extensions.push(extension)
+      } else {
+        subImage.extensions = [extension]
+      }
+
+      parsedByteLength += extension.byteLength - 1
+    }
+
+    // 如果是图像描述符标识则进行解析图像描述符以及本地色彩表和图像数据
+    if (flag === IMAGE_DESCRIPTOR_FLAG) {
+      // 图像描述符数据十个字节
+      const imageDescriptorBuffer = subImageBuffer.slice(parsedByteLength, parsedByteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH)
+
+      parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH
+
+      // 解析图像描述符
+      const imageDescriptor: ImageDescriptor = decodeImageDescriptor(imageDescriptorBuffer)
+
+      const { localColorTableFlag, localColorTableSize } = imageDescriptor.packedField
+
+      // 本地色彩表紧跟着图像描述符，如果存在则解析本地图像表，
+      if (localColorTableFlag === 1) {
+        // 本地色彩表字节长度
+        const localColorTableLength: number = 3 * Math.pow(2, localColorTableSize)
+
+        // 本地色彩表数据
+        const localColorTableBuffer: ArrayBuffer = subImageBuffer.slice(parsedByteLength, localColorTableLength)
+
+        parsedByteLength += localColorTableLength
+
+        // 本地色彩表
+        const localColorTable: RGB[] = formatColors(new Uint8Array(localColorTableBuffer))
+
+        subImage.localColorTable = localColorTable
+      }
+
+      subImage.imageDescriptor = imageDescriptor
+
+      parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH - 1
+    }
+
+    parsedByteLength += 1
+
+    // 达到结尾标识表明已经解析完成
+    if (flag === TRAILER_FLAG) {
+      parsedByteLength = subImageBuffer.byteLength
+    }
   }
+
+  return subImages
 }
 
 /**
@@ -88,6 +213,7 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): void {
  * @param blob 图像数据
  */
 async function decoder (blob: Blob): Promise<Gif | void> {
+  const gif: Gif = new Gif()
 
   const arrayBuffer: ArrayBuffer = await blob.arrayBuffer()
 
@@ -107,32 +233,37 @@ async function decoder (blob: Blob): Promise<Gif | void> {
   const logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH)
 
   // 解析屏幕逻辑描述符
-  const logicalScreeDescriptor: LogicalScreenDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer)
+  const logicalScreenDescriptor: LogicalScreenDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer)
 
-  const { globalColorTableFlag, globalColorTableSize } = logicalScreeDescriptor.packedField
+  const { globalColorTableFlag, globalColorTableSize } = logicalScreenDescriptor.packedField
 
   // 解析字节数
-  let parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
+  let byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
 
   // 如果存在全局色彩表则进行解析
-  if (globalColorTableFlag) {
+  if (globalColorTableFlag === 1) {
 
     // 全局色彩表字节长度
     const globalColorTableLength: number = 3 * Math.pow(2, globalColorTableSize)
 
-    parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength
+    byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength
 
     // 全局色彩表数据
-    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, parsedByteLength)
+    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, byteLength)
 
-    // 全局色彩比RGB
-    const globalRGBColors: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
+    // 全局色彩表
+    const globalColorTable: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
+
+    Object.assign(gif, { globalColorTable })
   }
 
   // 子图像组
-  const subImageBuffer = arrayBuffer.slice(parsedByteLength, arrayBuffer.byteLength - 1)
+  const subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength)
 
-  decodeSubImages(subImageBuffer)
+  // 解码子图像数据
+  const subImages: SubImage[] = decodeSubImages(subImageBuffer)
+
+  return Object.assign(gif, { version, byteLength, arrayBuffer, logicalScreenDescriptor, subImages })
 }
 
 export default { decoder }

@@ -93,6 +93,12 @@
     var APPLICATION_EXTENSION_FLAG = 255;
     // 注释扩展标识
     var COMMENT_EXTENSION_FLAG = 254;
+    // 图像描述符标识
+    var IMAGE_DESCRIPTOR_FLAG = 44;
+    // 图像描述符字节长度
+    var IMAGE_DESCRIPTOR_BYTE_LENGTH = 10;
+    // 结束标识
+    var TRAILER_FLAG = 59;
 
     /**
      * 判断是否为 Gif 格式文件
@@ -130,6 +136,12 @@
             return acc;
         }, []);
     }
+
+    var Gif = /** @class */ (function () {
+        function Gif() {
+        }
+        return Gif;
+    }());
 
     /**
      * 图形控制扩展解码器
@@ -207,7 +219,7 @@
         // 解析打包字段
         var fieldBinary = decimalToBinary(packedField);
         // 全局颜色表标识
-        var globalColorTableFlag = Boolean(fieldBinary[0]);
+        var globalColorTableFlag = fieldBinary[0];
         // 颜色分辨率
         var colorResolution = parseInt(fieldBinary.slice(1, 4).join(''), 2);
         // 排序标志，可忽略这个标识
@@ -232,21 +244,110 @@
         };
     }
     /**
+     * 解析图像描述符
+     * @param arrayBuffer
+     */
+    function decodeImageDescriptor(arrayBuffer) {
+        // 数据视图
+        var dataView = new DataView(arrayBuffer);
+        // 水平偏移
+        var left = dataView.getUint16(1, true);
+        // 垂直偏移
+        var top = dataView.getUint16(3, true);
+        // 子图像宽度
+        var width = dataView.getUint16(5, true);
+        // 子图像高度
+        var height = dataView.getUint16(7, true);
+        // 获取打包字段
+        var packedField = dataView.getUint8(9);
+        // 解析打包字段
+        var fieldBinary = decimalToBinary(packedField);
+        // 本地色彩表标识
+        var localColorTableFlag = fieldBinary[0];
+        // 扫描标识
+        var interlaceFlag = fieldBinary[1];
+        // 分类标识
+        var sortFlag = fieldBinary[2];
+        // 保留位
+        var reserved = parseInt(fieldBinary.slice(3, 5).join(''), 2);
+        // 本地色彩表大小
+        var localColorTableSize = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1;
+        return {
+            left: left,
+            top: top,
+            width: width,
+            height: height,
+            packedField: {
+                localColorTableFlag: localColorTableFlag,
+                interlaceFlag: interlaceFlag,
+                sortFlag: sortFlag,
+                reserved: reserved,
+                localColorTableSize: localColorTableSize
+            }
+        };
+    }
+    /**
      * 解析子图像组数据
      * @param subImageBuffer
      */
     function decodeSubImages(subImageBuffer) {
+        // 已解析字节数
+        var parsedByteLength = 0;
+        console.log(new Uint8Array(subImageBuffer));
+        // 子图像数据
+        var subImages = [{}];
         var subDataView = new DataView(subImageBuffer);
-        // 读取第一个字节判断标识
-        var flag = subDataView.getUint8(0);
-        // 如果是描述符标识则解析描述符
-        if (flag === EXTENSION_FLAG) {
-            // 扩展标识后一个字节判断扩展类型
-            var extensionFlag = subDataView.getUint8(1);
-            var extensionDecoder = ExtensionFactory.create(extensionFlag);
-            var extension = extensionDecoder(subImageBuffer);
-            console.log(extension);
+        while (parsedByteLength < subImageBuffer.byteLength) {
+            // 当前子图像
+            var subImage = subImages[subImages.length - 1];
+            // 读取第一个字节判断标识
+            var flag = subDataView.getUint8(parsedByteLength);
+            console.log('flag: ', flag);
+            // 如果是描述符标识则解析描述符
+            if (flag === EXTENSION_FLAG) {
+                // 扩展标识后一个字节判断扩展类型
+                var extensionFlag = subDataView.getUint8(parsedByteLength + 1);
+                // 根据扩展标识创建不同的扩展解析器
+                var extensionDecoder = ExtensionFactory.create(extensionFlag);
+                // 解析扩展
+                var extension = extensionDecoder(subImageBuffer);
+                if (subImage.extensions) {
+                    subImage.extensions.push(extension);
+                }
+                else {
+                    subImage.extensions = [extension];
+                }
+                parsedByteLength += extension.byteLength - 1;
+            }
+            // 如果是图像描述符标识则进行解析图像描述符以及本地色彩表和图像数据
+            if (flag === IMAGE_DESCRIPTOR_FLAG) {
+                // 图像描述符数据十个字节
+                var imageDescriptorBuffer = subImageBuffer.slice(parsedByteLength, parsedByteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH);
+                parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH;
+                // 解析图像描述符
+                var imageDescriptor = decodeImageDescriptor(imageDescriptorBuffer);
+                var _a = imageDescriptor.packedField, localColorTableFlag = _a.localColorTableFlag, localColorTableSize = _a.localColorTableSize;
+                // 本地色彩表紧跟着图像描述符，如果存在则解析本地图像表，
+                if (localColorTableFlag === 1) {
+                    // 本地色彩表字节长度
+                    var localColorTableLength = 3 * Math.pow(2, localColorTableSize);
+                    // 本地色彩表数据
+                    var localColorTableBuffer = subImageBuffer.slice(parsedByteLength, localColorTableLength);
+                    parsedByteLength += localColorTableLength;
+                    // 本地色彩表
+                    var localColorTable = formatColors(new Uint8Array(localColorTableBuffer));
+                    subImage.localColorTable = localColorTable;
+                }
+                subImage.imageDescriptor = imageDescriptor;
+                parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH - 1;
+            }
+            parsedByteLength += 1;
+            // 达到结尾标识表明已经解析完成
+            if (flag === TRAILER_FLAG) {
+                parsedByteLength = subImageBuffer.byteLength;
+            }
         }
+        return subImages;
     }
     /**
      * 解码器
@@ -254,12 +355,14 @@
      */
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreeDescriptor, _a, globalColorTableFlag, globalColorTableSize, parsedByteLength, globalColorTableLength, globalColorTableBuffer, subImageBuffer;
+            var gif, arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImages;
             return __generator(this, function (_b) {
                 switch (_b.label) {
-                    case 0: return [4 /*yield*/, blob.arrayBuffer()
-                        // 文件类型 6 个字节
-                    ];
+                    case 0:
+                        gif = new Gif();
+                        return [4 /*yield*/, blob.arrayBuffer()
+                            // 文件类型 6 个字节
+                        ];
                     case 1:
                         arrayBuffer = _b.sent();
                         headerBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH);
@@ -269,19 +372,20 @@
                             return [2 /*return*/, console.error('Not Gif!')];
                         }
                         logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH);
-                        logicalScreeDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer);
-                        _a = logicalScreeDescriptor.packedField, globalColorTableFlag = _a.globalColorTableFlag, globalColorTableSize = _a.globalColorTableSize;
-                        parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH;
+                        logicalScreenDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer);
+                        _a = logicalScreenDescriptor.packedField, globalColorTableFlag = _a.globalColorTableFlag, globalColorTableSize = _a.globalColorTableSize;
+                        byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH;
                         // 如果存在全局色彩表则进行解析
-                        if (globalColorTableFlag) {
+                        if (globalColorTableFlag === 1) {
                             globalColorTableLength = 3 * Math.pow(2, globalColorTableSize);
-                            parsedByteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength;
-                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, parsedByteLength);
-                            formatColors(new Uint8Array(globalColorTableBuffer));
+                            byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength;
+                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, byteLength);
+                            globalColorTable = formatColors(new Uint8Array(globalColorTableBuffer));
+                            Object.assign(gif, { globalColorTable: globalColorTable });
                         }
-                        subImageBuffer = arrayBuffer.slice(parsedByteLength, arrayBuffer.byteLength - 1);
-                        decodeSubImages(subImageBuffer);
-                        return [2 /*return*/];
+                        subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength);
+                        subImages = decodeSubImages(subImageBuffer);
+                        return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImages: subImages })];
                 }
             });
         });

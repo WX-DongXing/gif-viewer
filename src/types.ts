@@ -1,7 +1,7 @@
 import {EXTENSION_TYPE, GIF_VERSION} from './constant'
 
 interface LogicalPackedField {
-  globalColorTableFlag: boolean
+  globalColorTableFlag: number
   colorResolution: number
   sortFlag: number
   globalColorTableSize: number
@@ -13,11 +13,6 @@ interface LogicalScreenDescriptor {
   packedField: LogicalPackedField
   backgroundColorIndex: number
   pixelAspectRatio: number
-}
-
-interface Gif {
-  readonly version: GIF_VERSION
-  readonly logicalScreenDescriptor: LogicalScreenDescriptor
 }
 
 interface RGB {
@@ -44,9 +39,43 @@ interface Extension {
   transparentColorIndex?: number
 }
 
+interface SubImage {
+  extensions?: Extension[]
+  imageDescriptor?: any
+  localColorTable?: RGB[]
+  imageData?: any
+}
+
+class Gif {
+  version: string
+  byteLength: number
+  arrayBuffer: ArrayBuffer
+  logicalScreenDescriptor: LogicalScreenDescriptor
+  globalColorTable: RGB[]
+  subImages: SubImage[]
+}
+
+interface ImagePackedField {
+  localColorTableFlag: number
+  interlaceFlag: number
+  sortFlag: number
+  reserved: number
+  localColorTableSize: number
+}
+
+interface ImageDescriptor {
+  left: number
+  top: number
+  width: number
+  height: number
+  packedField: ImagePackedField
+}
+
 export {
   Gif,
   LogicalScreenDescriptor,
   RGB,
-  Extension
+  Extension,
+  SubImage,
+  ImageDescriptor
 }
