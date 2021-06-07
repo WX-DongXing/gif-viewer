@@ -4,10 +4,10 @@ import { decimalToBinary } from './utils'
 
 /**
  * 图形控制扩展解码器
- * @param buffer
+ * @param arrayBuffer
  */
-function graphicsControlExtensionDecoder (buffer: ArrayBuffer): Extension {
-  const dataView: DataView = new DataView(buffer)
+function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer): Extension {
+  const dataView: DataView = new DataView(arrayBuffer)
 
   // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
   const byteLength = dataView.getUint8(2) + 4
@@ -51,6 +51,38 @@ function graphicsControlExtensionDecoder (buffer: ArrayBuffer): Extension {
   }
 }
 
+/**
+ * 注释扩展解码器
+ * @param arrayBuffer
+ */
+function commentExtensionDecoder (arrayBuffer: ArrayBuffer): Extension {
+
+  const dataView: DataView = new DataView(arrayBuffer)
+
+  // 注释数据字节长度
+  let byteLength: number = dataView.getUint8(2)
+
+  // 注释数据
+  const commentBuffer: ArrayBuffer = arrayBuffer.slice(3, byteLength + 3)
+
+  // 创建 ASCII 解码器
+  const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
+
+  // 注释内容
+  const comment = ASCIIDecoder.decode(commentBuffer)
+
+  // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
+  byteLength += 4
+
+  return {
+    name: 'comment extension',
+    type: EXTENSION_TYPE.comment,
+    byteLength,
+    comment
+  }
+}
+
 export {
-  graphicsControlExtensionDecoder
+  graphicsControlExtensionDecoder,
+  commentExtensionDecoder
 }

@@ -33,10 +33,12 @@ interface Extension {
   name: string
   type: EXTENSION_TYPE
   byteLength: number
-  packedField: ExtensionPackedField
+  packedField?: ExtensionPackedField
   // graphics control
   delayTime?: number
   transparentColorIndex?: number
+  // comment
+  comment?: string
 }
 
 interface SubImage {

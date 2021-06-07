@@ -184,6 +184,8 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
       // 扩展标识后一个字节判断扩展类型
       const extensionFlag = subDataView.getUint8(byteLength + 1)
 
+      console.log('extension flag: ', extensionFlag)
+
       // 根据扩展标识创建不同的扩展解析器
       const extensionDecoder = ExtensionFactory.create(extensionFlag)
 
@@ -262,10 +264,11 @@ async function decoder (blob: Blob): Promise<Gif | void> {
   // 文件类型 6 个字节
   const headerBuffer: ArrayBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH)
 
-  const decoder: TextDecoder = new TextDecoder('utf8')
+  // 创建 ASCII 解码器
+  const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
 
   // gif version
-  const version = decoder.decode(headerBuffer)
+  const version = ASCIIDecoder.decode(headerBuffer)
 
   if (!isGif(version)) {
     return console.error('Not Gif!')

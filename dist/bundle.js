@@ -147,10 +147,10 @@
 
     /**
      * 图形控制扩展解码器
-     * @param buffer
+     * @param arrayBuffer
      */
-    function graphicsControlExtensionDecoder(buffer) {
-        var dataView = new DataView(buffer);
+    function graphicsControlExtensionDecoder(arrayBuffer) {
+        var dataView = new DataView(arrayBuffer);
         // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
         var byteLength = dataView.getUint8(2) + 4;
         // 打包字段
@@ -183,6 +183,29 @@
             transparentColorIndex: transparentColorIndex
         };
     }
+    /**
+     * 注释扩展解码器
+     * @param arrayBuffer
+     */
+    function commentExtensionDecoder(arrayBuffer) {
+        var dataView = new DataView(arrayBuffer);
+        // 注释数据字节长度
+        var byteLength = dataView.getUint8(2);
+        // 注释数据
+        var commentBuffer = arrayBuffer.slice(3, byteLength + 3);
+        // 创建 ASCII 解码器
+        var ASCIIDecoder = new TextDecoder('utf8');
+        // 注释内容
+        var comment = ASCIIDecoder.decode(commentBuffer);
+        // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
+        byteLength += 4;
+        return {
+            name: 'comment extension',
+            type: EXTENSION_TYPE.comment,
+            byteLength: byteLength,
+            comment: comment
+        };
+    }
 
     /**
      * 扩展工厂函数
@@ -199,7 +222,7 @@
                 case APPLICATION_EXTENSION_FLAG:
                     return;
                 case COMMENT_EXTENSION_FLAG:
-                    return;
+                    return commentExtensionDecoder;
             }
         };
         return ExtensionFactory;
@@ -336,6 +359,7 @@
             if (flag === EXTENSION_FLAG) {
                 // 扩展标识后一个字节判断扩展类型
                 var extensionFlag = subDataView.getUint8(byteLength + 1);
+                console.log('extension flag: ', extensionFlag);
                 // 根据扩展标识创建不同的扩展解析器
                 var extensionDecoder = ExtensionFactory.create(extensionFlag);
                 // 解析扩展
@@ -392,7 +416,7 @@
      */
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var gif, arrayBuffer, headerBuffer, decoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImages;
+            var gif, arrayBuffer, headerBuffer, ASCIIDecoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImages;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -403,8 +427,8 @@
                     case 1:
                         arrayBuffer = _b.sent();
                         headerBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH);
-                        decoder = new TextDecoder('utf8');
-                        version = decoder.decode(headerBuffer);
+                        ASCIIDecoder = new TextDecoder('utf8');
+                        version = ASCIIDecoder.decode(headerBuffer);
                         if (!isGif(version)) {
                             return [2 /*return*/, console.error('Not Gif!')];
                         }

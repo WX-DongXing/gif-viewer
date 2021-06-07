@@ -3,7 +3,7 @@ import {
   COMMENT_EXTENSION_FLAG
 } from './constant'
 
-import { graphicsControlExtensionDecoder } from './extensions'
+import { graphicsControlExtensionDecoder, commentExtensionDecoder } from './extensions'
 
 /**
  * 扩展工厂函数
@@ -18,7 +18,7 @@ class ExtensionFactory {
       case APPLICATION_EXTENSION_FLAG:
         return
       case COMMENT_EXTENSION_FLAG:
-        return
+        return commentExtensionDecoder
       default:
         break
     }
