@@ -122,17 +122,17 @@ function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
  * 解码图像数据
  * @param arraybuffer
  */
-function decodeImageData (arraybuffer: ArrayBuffer): ImageData[] {
+function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
   let byteLength = 0
 
   // 数据视图
   const  dataView: DataView = new DataView(arraybuffer)
 
-  // 子图像数据
-  const imageData: ImageData[] = []
-
   // 最小代码尺度
   const minCodeSize: number = dataView.getUint8(byteLength)
+
+  // 子图像数据
+  const imageData: ImageData = { minCodeSize, imageDataBuffers: [] }
 
   byteLength += 1
 
@@ -147,11 +147,7 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData[] {
     // 图像数据
     const imageDataBuffer: ArrayBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength)
 
-    imageData.push({
-      minCodeSize,
-      byteLength,
-      imageDataBuffer
-    })
+    imageData.imageDataBuffers.push(imageDataBuffer)
   }
 
   return imageData
@@ -232,18 +228,16 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
       // 图像数据在图像描述符或本地色彩表之后，解析图像数据
       const imageDataBuffer: ArrayBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength)
 
-      console.log(new Uint8Array(imageDataBuffer))
-
       // 解码子图像数据
-      const imageData: ImageData[] = decodeImageData(imageDataBuffer)
+      const imageData: ImageData = decodeImageData(imageDataBuffer)
 
-      // 子图像字节长度
-      const imageDataByteLength: number = imageData.reduce((acc: number, cur: ImageData) => acc += cur.byteLength, 1)
-
-      byteLength += imageDataByteLength
+      byteLength += imageDataBuffer.byteLength
 
       subImage.imageData = imageData
 
+      if (subDataView.getUint8(byteLength - 1) !== TRAILER_FLAG) {
+        subImages.push({})
+      }
     } else if (flag === TRAILER_FLAG) {
       // 达到结尾标识表明已经解析完成
       byteLength = subImageBuffer.byteLength
@@ -311,6 +305,8 @@ async function decoder (blob: Blob): Promise<Gif | void> {
 
   // 解码子图像数据
   const subImages: SubImage[] = decodeSubImages(subImageBuffer)
+
+  byteLength += subImageBuffer.byteLength
 
   return Object.assign(gif, { version, byteLength, arrayBuffer, logicalScreenDescriptor, subImages })
 }

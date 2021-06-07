@@ -323,10 +323,10 @@
         var byteLength = 0;
         // 数据视图
         var dataView = new DataView(arraybuffer);
-        // 子图像数据
-        var imageData = [];
         // 最小代码尺度
         var minCodeSize = dataView.getUint8(byteLength);
+        // 子图像数据
+        var imageData = { minCodeSize: minCodeSize, imageDataBuffers: [] };
         byteLength += 1;
         while (byteLength < arraybuffer.byteLength) {
             // 最小代码尺度下一个字节便是图像数据字节长度
@@ -336,11 +336,7 @@
                 break;
             // 图像数据
             var imageDataBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength);
-            imageData.push({
-                minCodeSize: minCodeSize,
-                byteLength: byteLength,
-                imageDataBuffer: imageDataBuffer
-            });
+            imageData.imageDataBuffers.push(imageDataBuffer);
         }
         return imageData;
     }
@@ -397,13 +393,13 @@
                 }
                 // 图像数据在图像描述符或本地色彩表之后，解析图像数据
                 var imageDataBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength);
-                console.log(new Uint8Array(imageDataBuffer));
                 // 解码子图像数据
                 var imageData = decodeImageData(imageDataBuffer);
-                // 子图像字节长度
-                var imageDataByteLength = imageData.reduce(function (acc, cur) { return acc += cur.byteLength; }, 1);
-                byteLength += imageDataByteLength;
+                byteLength += imageDataBuffer.byteLength;
                 subImage.imageData = imageData;
+                if (subDataView.getUint8(byteLength - 1) !== TRAILER_FLAG) {
+                    subImages.push({});
+                }
             }
             else if (flag === TRAILER_FLAG) {
                 // 达到结尾标识表明已经解析完成
@@ -452,6 +448,7 @@
                         }
                         subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength);
                         subImages = decodeSubImages(subImageBuffer);
+                        byteLength += subImageBuffer.byteLength;
                         return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImages: subImages })];
                 }
             });

@@ -75,8 +75,7 @@ interface ImageDescriptor {
 
 interface ImageData {
   minCodeSize: number
-  byteLength: number
-  imageDataBuffer: ArrayBuffer
+  imageDataBuffers: ArrayBuffer[]
 }
 
 export {
