@@ -148,9 +148,11 @@
     /**
      * 图形控制扩展解码器
      * @param arrayBuffer
+     * @param offset
      */
-    function graphicsControlExtensionDecoder(arrayBuffer) {
-        var dataView = new DataView(arrayBuffer);
+    function graphicsControlExtensionDecoder(arrayBuffer, offset) {
+        // 创建数据视图
+        var dataView = new DataView(arrayBuffer, offset);
         // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
         var byteLength = dataView.getUint8(2) + 4;
         // 打包字段
@@ -186,13 +188,15 @@
     /**
      * 注释扩展解码器
      * @param arrayBuffer
+     * @param offset
      */
-    function commentExtensionDecoder(arrayBuffer) {
-        var dataView = new DataView(arrayBuffer);
+    function commentExtensionDecoder(arrayBuffer, offset) {
+        // 创建数据视图
+        var dataView = new DataView(arrayBuffer, offset);
         // 注释数据字节长度
         var byteLength = dataView.getUint8(2);
         // 注释数据
-        var commentBuffer = arrayBuffer.slice(3, byteLength + 3);
+        var commentBuffer = arrayBuffer.slice(offset + 3, byteLength + offset + 3);
         // 创建 ASCII 解码器
         var ASCIIDecoder = new TextDecoder('utf8');
         // 注释内容
@@ -321,14 +325,15 @@
         var dataView = new DataView(arraybuffer);
         // 子图像数据
         var imageData = [];
+        // 最小代码尺度
+        var minCodeSize = dataView.getUint8(byteLength);
+        byteLength += 1;
         while (byteLength < arraybuffer.byteLength) {
-            // 最小代码尺度
-            var minCodeSize = dataView.getUint8(byteLength);
-            // 如果下一条数据为终止则跳出循环
-            if (minCodeSize === IMAGE_DATA_END_FLAG)
-                break;
             // 最小代码尺度下一个字节便是图像数据字节长度
-            var imageDataByteLength = dataView.getUint8(byteLength += 1);
+            var imageDataByteLength = dataView.getUint8(byteLength);
+            // 如果下一条数据为终止则跳出循环
+            if (imageDataByteLength === IMAGE_DATA_END_FLAG)
+                break;
             // 图像数据
             var imageDataBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength);
             imageData.push({
@@ -349,6 +354,7 @@
         // 子图像数据
         var subImages = [{}];
         var subDataView = new DataView(subImageBuffer);
+        console.log(new Uint8Array(subImageBuffer));
         while (byteLength < subImageBuffer.byteLength) {
             // 当前子图像
             var subImage = subImages[subImages.length - 1];
@@ -363,7 +369,7 @@
                 // 根据扩展标识创建不同的扩展解析器
                 var extensionDecoder = ExtensionFactory.create(extensionFlag);
                 // 解析扩展
-                var extension = extensionDecoder(subImageBuffer);
+                var extension = extensionDecoder(subImageBuffer, byteLength);
                 if (subImage.extensions) {
                     subImage.extensions.push(extension);
                 }
@@ -374,10 +380,9 @@
             }
             else if (flag === IMAGE_DESCRIPTOR_FLAG) {
                 // 图像描述符数据十个字节
-                var imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH);
+                var imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH);
                 // 解析图像描述符
                 var imageDescriptor = decodeImageDescriptor(imageDescriptorBuffer);
-                byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH;
                 subImage.imageDescriptor = imageDescriptor;
                 var _a = imageDescriptor.packedField, localColorTableFlag = _a.localColorTableFlag, localColorTableSize = _a.localColorTableSize;
                 // 本地色彩表紧跟着图像描述符，如果存在则解析本地图像表，
@@ -392,6 +397,7 @@
                 }
                 // 图像数据在图像描述符或本地色彩表之后，解析图像数据
                 var imageDataBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength);
+                console.log(new Uint8Array(imageDataBuffer));
                 // 解码子图像数据
                 var imageData = decodeImageData(imageDataBuffer);
                 // 子图像字节长度

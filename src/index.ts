@@ -131,16 +131,18 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData[] {
   // 子图像数据
   const imageData: ImageData[] = []
 
+  // 最小代码尺度
+  const minCodeSize: number = dataView.getUint8(byteLength)
+
+  byteLength += 1
+
   while (byteLength < arraybuffer.byteLength) {
 
-    // 最小代码尺度
-    const minCodeSize: number = dataView.getUint8(byteLength)
+    // 最小代码尺度下一个字节便是图像数据字节长度
+    const imageDataByteLength: number = dataView.getUint8(byteLength)
 
     // 如果下一条数据为终止则跳出循环
-    if (minCodeSize === IMAGE_DATA_END_FLAG) break
-
-    // 最小代码尺度下一个字节便是图像数据字节长度
-    const imageDataByteLength: number = dataView.getUint8(byteLength += 1)
+    if (imageDataByteLength === IMAGE_DATA_END_FLAG) break
 
     // 图像数据
     const imageDataBuffer: ArrayBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength)
@@ -168,6 +170,8 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
 
   const subDataView: DataView = new DataView(subImageBuffer)
 
+  console.log(new Uint8Array(subImageBuffer))
+
   while (byteLength < subImageBuffer.byteLength) {
 
     // 当前子图像
@@ -190,7 +194,7 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
       const extensionDecoder = ExtensionFactory.create(extensionFlag)
 
       // 解析扩展
-      const extension: Extension = extensionDecoder(subImageBuffer)
+      const extension: Extension = extensionDecoder(subImageBuffer, byteLength)
 
       if (subImage.extensions) {
         subImage.extensions.push(extension)
@@ -202,12 +206,10 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
 
     } else if (flag === IMAGE_DESCRIPTOR_FLAG) {
       // 图像描述符数据十个字节
-      const imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH)
+      const imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH)
 
       // 解析图像描述符
       const imageDescriptor: ImageDescriptor = decodeImageDescriptor(imageDescriptorBuffer)
-
-      byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH
 
       subImage.imageDescriptor = imageDescriptor
 
@@ -229,6 +231,8 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage[] {
 
       // 图像数据在图像描述符或本地色彩表之后，解析图像数据
       const imageDataBuffer: ArrayBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength)
+
+      console.log(new Uint8Array(imageDataBuffer))
 
       // 解码子图像数据
       const imageData: ImageData[] = decodeImageData(imageDataBuffer)

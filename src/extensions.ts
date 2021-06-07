@@ -5,9 +5,11 @@ import { decimalToBinary } from './utils'
 /**
  * 图形控制扩展解码器
  * @param arrayBuffer
+ * @param offset
  */
-function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer): Extension {
-  const dataView: DataView = new DataView(arrayBuffer)
+function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+  // 创建数据视图
+  const dataView: DataView = new DataView(arrayBuffer, offset)
 
   // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
   const byteLength = dataView.getUint8(2) + 4
@@ -54,16 +56,17 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer): Extension {
 /**
  * 注释扩展解码器
  * @param arrayBuffer
+ * @param offset
  */
-function commentExtensionDecoder (arrayBuffer: ArrayBuffer): Extension {
-
-  const dataView: DataView = new DataView(arrayBuffer)
+function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+  // 创建数据视图
+  const dataView: DataView = new DataView(arrayBuffer, offset)
 
   // 注释数据字节长度
   let byteLength: number = dataView.getUint8(2)
 
   // 注释数据
-  const commentBuffer: ArrayBuffer = arrayBuffer.slice(3, byteLength + 3)
+  const commentBuffer: ArrayBuffer = arrayBuffer.slice(offset + 3, byteLength + offset + 3)
 
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
