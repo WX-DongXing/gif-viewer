@@ -97,6 +97,8 @@
     var IMAGE_DESCRIPTOR_FLAG = 44;
     // 图像描述符字节长度
     var IMAGE_DESCRIPTOR_BYTE_LENGTH = 10;
+    // 图像数据结束标识
+    var IMAGE_DATA_END_FLAG = 0;
     // 结束标识
     var TRAILER_FLAG = 59;
 
@@ -204,7 +206,7 @@
     }());
 
     /**
-     * 解析逻辑屏幕描述符
+     * 解码逻辑屏幕描述符
      * @param arrayBuffer
      */
     function decodeLogicalScreenDescriptor(arrayBuffer) {
@@ -244,7 +246,7 @@
         };
     }
     /**
-     * 解析图像描述符
+     * 解码图像描述符
      * @param arrayBuffer
      */
     function decodeImageDescriptor(arrayBuffer) {
@@ -287,26 +289,53 @@
         };
     }
     /**
+     * 解码图像数据
+     * @param arraybuffer
+     */
+    function decodeImageData(arraybuffer) {
+        var byteLength = 0;
+        // 数据视图
+        var dataView = new DataView(arraybuffer);
+        // 子图像数据
+        var imageData = [];
+        while (byteLength < arraybuffer.byteLength) {
+            // 最小代码尺度
+            var minCodeSize = dataView.getUint8(byteLength);
+            // 如果下一条数据为终止则跳出循环
+            if (minCodeSize === IMAGE_DATA_END_FLAG)
+                break;
+            // 最小代码尺度下一个字节便是图像数据字节长度
+            var imageDataByteLength = dataView.getUint8(byteLength += 1);
+            // 图像数据
+            var imageDataBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength);
+            imageData.push({
+                minCodeSize: minCodeSize,
+                byteLength: byteLength,
+                imageDataBuffer: imageDataBuffer
+            });
+        }
+        return imageData;
+    }
+    /**
      * 解析子图像组数据
      * @param subImageBuffer
      */
     function decodeSubImages(subImageBuffer) {
         // 已解析字节数
-        var parsedByteLength = 0;
-        console.log(new Uint8Array(subImageBuffer));
+        var byteLength = 0;
         // 子图像数据
         var subImages = [{}];
         var subDataView = new DataView(subImageBuffer);
-        while (parsedByteLength < subImageBuffer.byteLength) {
+        while (byteLength < subImageBuffer.byteLength) {
             // 当前子图像
             var subImage = subImages[subImages.length - 1];
             // 读取第一个字节判断标识
-            var flag = subDataView.getUint8(parsedByteLength);
+            var flag = subDataView.getUint8(byteLength);
             console.log('flag: ', flag);
             // 如果是描述符标识则解析描述符
             if (flag === EXTENSION_FLAG) {
                 // 扩展标识后一个字节判断扩展类型
-                var extensionFlag = subDataView.getUint8(parsedByteLength + 1);
+                var extensionFlag = subDataView.getUint8(byteLength + 1);
                 // 根据扩展标识创建不同的扩展解析器
                 var extensionDecoder = ExtensionFactory.create(extensionFlag);
                 // 解析扩展
@@ -317,34 +346,42 @@
                 else {
                     subImage.extensions = [extension];
                 }
-                parsedByteLength += extension.byteLength - 1;
+                byteLength += extension.byteLength;
             }
-            // 如果是图像描述符标识则进行解析图像描述符以及本地色彩表和图像数据
-            if (flag === IMAGE_DESCRIPTOR_FLAG) {
+            else if (flag === IMAGE_DESCRIPTOR_FLAG) {
                 // 图像描述符数据十个字节
-                var imageDescriptorBuffer = subImageBuffer.slice(parsedByteLength, parsedByteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH);
-                parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH;
+                var imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength + IMAGE_DESCRIPTOR_BYTE_LENGTH);
                 // 解析图像描述符
                 var imageDescriptor = decodeImageDescriptor(imageDescriptorBuffer);
+                byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH;
+                subImage.imageDescriptor = imageDescriptor;
                 var _a = imageDescriptor.packedField, localColorTableFlag = _a.localColorTableFlag, localColorTableSize = _a.localColorTableSize;
                 // 本地色彩表紧跟着图像描述符，如果存在则解析本地图像表，
                 if (localColorTableFlag === 1) {
                     // 本地色彩表字节长度
                     var localColorTableLength = 3 * Math.pow(2, localColorTableSize);
                     // 本地色彩表数据
-                    var localColorTableBuffer = subImageBuffer.slice(parsedByteLength, localColorTableLength);
-                    parsedByteLength += localColorTableLength;
+                    var localColorTableBuffer = subImageBuffer.slice(byteLength, localColorTableLength);
+                    byteLength += localColorTableLength;
                     // 本地色彩表
-                    var localColorTable = formatColors(new Uint8Array(localColorTableBuffer));
-                    subImage.localColorTable = localColorTable;
+                    subImage.localColorTable = formatColors(new Uint8Array(localColorTableBuffer));
                 }
-                subImage.imageDescriptor = imageDescriptor;
-                parsedByteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH - 1;
+                // 图像数据在图像描述符或本地色彩表之后，解析图像数据
+                var imageDataBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength);
+                // 解码子图像数据
+                var imageData = decodeImageData(imageDataBuffer);
+                // 子图像字节长度
+                var imageDataByteLength = imageData.reduce(function (acc, cur) { return acc += cur.byteLength; }, 1);
+                byteLength += imageDataByteLength;
+                subImage.imageData = imageData;
             }
-            parsedByteLength += 1;
-            // 达到结尾标识表明已经解析完成
-            if (flag === TRAILER_FLAG) {
-                parsedByteLength = subImageBuffer.byteLength;
+            else if (flag === TRAILER_FLAG) {
+                // 达到结尾标识表明已经解析完成
+                byteLength = subImageBuffer.byteLength;
+            }
+            else {
+                console.error('子图像解析异常！');
+                break;
             }
         }
         return subImages;

@@ -71,11 +71,18 @@ interface ImageDescriptor {
   packedField: ImagePackedField
 }
 
+interface ImageData {
+  minCodeSize: number
+  byteLength: number
+  imageDataBuffer: ArrayBuffer
+}
+
 export {
   Gif,
   LogicalScreenDescriptor,
   RGB,
   Extension,
   SubImage,
-  ImageDescriptor
+  ImageDescriptor,
+  ImageData
 }
