@@ -1,11 +1,11 @@
 import {
-  GRAPHICS_CONTROL_EXTENSION_FLAG, PLAIN_TEXT_EXTENSION_FLAG, APPLICATION_EXTENSION_FLAG,
-  COMMENT_EXTENSION_FLAG
+  GRAPHICS_CONTROL_EXTENSION_FLAG, PLAIN_TEXT_EXTENSION_FLAG,
+  APPLICATION_EXTENSION_FLAG, COMMENT_EXTENSION_FLAG
 } from './constant'
 
 import {
-  graphicsControlExtensionDecoder, plainTextExtensionDecoder,
-  commentExtensionDecoder
+  graphicsControlExtensionDecoder, applicationExtensionDecoder,
+  plainTextExtensionDecoder, commentExtensionDecoder
 } from './extensions'
 
 /**
@@ -19,7 +19,7 @@ class ExtensionFactory {
       case PLAIN_TEXT_EXTENSION_FLAG:
         return plainTextExtensionDecoder
       case APPLICATION_EXTENSION_FLAG:
-        return
+        return applicationExtensionDecoder
       case COMMENT_EXTENSION_FLAG:
         return commentExtensionDecoder
       default:

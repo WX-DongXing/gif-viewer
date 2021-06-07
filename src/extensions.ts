@@ -54,6 +54,76 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: numb
 }
 
 /**
+ * 应用扩展解码器
+ * @param arrayBuffer
+ * @param offset
+ */
+function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+  let byteLength = 1
+
+  // 创建数据视图
+  const dataView: DataView = new DataView(arrayBuffer, offset)
+
+  // 应用数据字节长度
+  const applicationByteLength = dataView.getUint8(byteLength += 1)
+
+  // 创建 ASCII 解码器
+  const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
+
+  // 应用扩展类型
+  const applicationVersion = ASCIIDecoder.decode(arrayBuffer.slice(offset + 3, offset + 3 + applicationByteLength))
+
+  console.log(applicationVersion)
+  // 循环数据长度
+  const loopByteLength: number = dataView.getUint8(byteLength += applicationByteLength + 1)
+
+  const from = dataView.getUint8(byteLength += 1)
+
+  const to = dataView.getUint16(byteLength += 1, true)
+
+  byteLength += 3
+
+  return {
+    name: 'application extension',
+    type: EXTENSION_TYPE.application,
+    byteLength,
+    application: {
+      from,
+      to
+    }
+  }
+}
+
+/**
+ * 文本扩展解码器
+ * @param arrayBuffer
+ * @param offset
+ */
+function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+  let byteLength = 1
+
+  // 创建数据视图
+  const dataView: DataView = new DataView(arrayBuffer, offset)
+
+  while (byteLength < arrayBuffer.byteLength) {
+    // 文本数据字节长度
+    const textBufferLength: number = dataView.getUint8(byteLength += 1)
+
+    if (textBufferLength === PLAIN_TEXT_END_FLAG) break
+    byteLength += textBufferLength
+  }
+
+  // 结束标识（1字节）
+  byteLength += 1
+
+  return {
+    name: 'comment extension',
+    type: EXTENSION_TYPE.plain_text,
+    byteLength
+  }
+}
+
+/**
  * 注释扩展解码器
  * @param arrayBuffer
  * @param offset
@@ -85,32 +155,9 @@ function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Ext
   }
 }
 
-function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
-  let byteLength = 1
-
-  // 创建数据视图
-  const dataView: DataView = new DataView(arrayBuffer, offset)
-
-  while (byteLength < arrayBuffer.byteLength) {
-    // 文本数据字节长度
-    const textBufferLength: number = dataView.getUint8(byteLength += 1)
-
-    if (textBufferLength === PLAIN_TEXT_END_FLAG) break
-    byteLength += textBufferLength
-  }
-
-  // 结束标识（1字节）
-  byteLength += 1
-
-  return {
-    name: 'comment extension',
-    type: EXTENSION_TYPE.plain_text,
-    byteLength
-  }
-}
-
 export {
   graphicsControlExtensionDecoder,
+  applicationExtensionDecoder,
   plainTextExtensionDecoder,
   commentExtensionDecoder
 }

@@ -29,6 +29,11 @@ interface ExtensionPackedField {
   transparentColorFlag?: number
 }
 
+interface Application {
+  from: number
+  to: number
+}
+
 interface Extension {
   name: string
   type: EXTENSION_TYPE
@@ -39,6 +44,8 @@ interface Extension {
   transparentColorIndex?: number
   // comment
   comment?: string
+  // application
+  application?: Application
 }
 
 interface SubImage {

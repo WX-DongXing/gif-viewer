@@ -99,6 +99,8 @@
     var IMAGE_DESCRIPTOR_BYTE_LENGTH = 10;
     // 图像数据结束标识
     var IMAGE_DATA_END_FLAG = 0;
+    // 文本扩展结束标识
+    var PLAIN_TEXT_END_FLAG = 0;
     // 结束标识
     var TRAILER_FLAG = 59;
 
@@ -186,6 +188,61 @@
         };
     }
     /**
+     * 应用扩展解码器
+     * @param arrayBuffer
+     * @param offset
+     */
+    function applicationExtensionDecoder(arrayBuffer, offset) {
+        var byteLength = 1;
+        // 创建数据视图
+        var dataView = new DataView(arrayBuffer, offset);
+        // 应用数据字节长度
+        var applicationByteLength = dataView.getUint8(byteLength += 1);
+        // 创建 ASCII 解码器
+        var ASCIIDecoder = new TextDecoder('utf8');
+        // 应用扩展类型
+        var applicationVersion = ASCIIDecoder.decode(arrayBuffer.slice(offset + 3, offset + 3 + applicationByteLength));
+        console.log(applicationVersion);
+        // 循环数据长度
+        dataView.getUint8(byteLength += applicationByteLength + 1);
+        var from = dataView.getUint8(byteLength += 1);
+        var to = dataView.getUint16(byteLength += 1, true);
+        byteLength += 3;
+        return {
+            name: 'application extension',
+            type: EXTENSION_TYPE.application,
+            byteLength: byteLength,
+            application: {
+                from: from,
+                to: to
+            }
+        };
+    }
+    /**
+     * 文本扩展解码器
+     * @param arrayBuffer
+     * @param offset
+     */
+    function plainTextExtensionDecoder(arrayBuffer, offset) {
+        var byteLength = 1;
+        // 创建数据视图
+        var dataView = new DataView(arrayBuffer, offset);
+        while (byteLength < arrayBuffer.byteLength) {
+            // 文本数据字节长度
+            var textBufferLength = dataView.getUint8(byteLength += 1);
+            if (textBufferLength === PLAIN_TEXT_END_FLAG)
+                break;
+            byteLength += textBufferLength;
+        }
+        // 结束标识（1字节）
+        byteLength += 1;
+        return {
+            name: 'comment extension',
+            type: EXTENSION_TYPE.plain_text,
+            byteLength: byteLength
+        };
+    }
+    /**
      * 注释扩展解码器
      * @param arrayBuffer
      * @param offset
@@ -222,9 +279,9 @@
                 case GRAPHICS_CONTROL_EXTENSION_FLAG:
                     return graphicsControlExtensionDecoder;
                 case PLAIN_TEXT_EXTENSION_FLAG:
-                    return;
+                    return plainTextExtensionDecoder;
                 case APPLICATION_EXTENSION_FLAG:
-                    return;
+                    return applicationExtensionDecoder;
                 case COMMENT_EXTENSION_FLAG:
                     return commentExtensionDecoder;
             }
