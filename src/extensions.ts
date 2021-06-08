@@ -9,12 +9,12 @@ import { decimalToBinary } from './utils'
 
 /**
  * 图形控制扩展解码器
- * @param arrayBuffer
+ * @param buffer
  * @param offset
  */
-function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+function graphicsControlExtensionDecoder (buffer: ArrayBuffer, offset: number): Extension {
   // 创建数据视图
-  const dataView: DataView = new DataView(arrayBuffer, offset)
+  const dataView: DataView = new DataView(buffer, offset)
 
   // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
   const byteLength = dataView.getUint8(2) + 4
@@ -43,10 +43,14 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: numb
   // 透明颜色索引
   const transparentColorIndex: number = dataView.getUint8(6)
 
+  // 图形控制扩展数据
+  const arrayBuffer: ArrayBuffer = buffer.slice(offset, offset + byteLength)
+
   return {
     name: 'graphics control extension',
     type: EXTENSION_TYPE.graphics_control,
     byteLength,
+    arrayBuffer,
     packedField: {
       reserved,
       disposalMethod,
@@ -60,14 +64,14 @@ function graphicsControlExtensionDecoder (arrayBuffer: ArrayBuffer, offset: numb
 
 /**
  * 应用扩展解码器
- * @param arrayBuffer
+ * @param buffer
  * @param offset
  */
-function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+function applicationExtensionDecoder (buffer: ArrayBuffer, offset: number): Extension {
   let byteLength = 2
 
   // 创建数据视图
-  const dataView: DataView = new DataView(arrayBuffer, offset)
+  const dataView: DataView = new DataView(buffer, offset)
 
   // 应用数据固定字节长度
   const applicationFixedByteLength = dataView.getUint8(byteLength)
@@ -76,7 +80,7 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
 
   // 应用扩展类型 3, 3 + 11
-  const version = ASCIIDecoder.decode(arrayBuffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)))
+  const version = ASCIIDecoder.decode(buffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)))
 
   const application: Application = { version, data: null }
 
@@ -101,7 +105,7 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
 
     } else {
       // 其他应用扩展读取数据直至为 0
-      application.data = arrayBuffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1))
+      application.data = buffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1))
     }
 
     byte = dataView.getUint8(byteLength)
@@ -110,24 +114,28 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
   // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
   byteLength += 2
 
+  // 应用扩展数据
+  const arrayBuffer: ArrayBuffer = buffer.slice(offset, offset + byteLength)
+
   return {
     name: 'application extension',
     type: EXTENSION_TYPE.application,
     byteLength,
+    arrayBuffer,
     application
   }
 }
 
 /**
  * 文本扩展解码器
- * @param arrayBuffer
+ * @param buffer
  * @param offset
  */
-function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+function plainTextExtensionDecoder (buffer: ArrayBuffer, offset: number): Extension {
   let byteLength = 2
 
   // 创建数据视图
-  const dataView: DataView = new DataView(arrayBuffer, offset)
+  const dataView: DataView = new DataView(buffer, offset)
 
   // 文本数据字节长度
   let textBufferLength: number = dataView.getUint8(byteLength)
@@ -139,27 +147,31 @@ function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): E
   // real byteLength = index + 1 （1字节）
   byteLength += 1
 
+  // 文本扩展数据
+  const arrayBuffer: ArrayBuffer = buffer.slice(offset, offset + byteLength)
+
   return {
     name: 'comment extension',
     type: EXTENSION_TYPE.plain_text,
-    byteLength
+    byteLength,
+    arrayBuffer
   }
 }
 
 /**
  * 注释扩展解码器
- * @param arrayBuffer
+ * @param buffer
  * @param offset
  */
-function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
+function commentExtensionDecoder (buffer: ArrayBuffer, offset: number): Extension {
   // 创建数据视图
-  const dataView: DataView = new DataView(arrayBuffer, offset)
+  const dataView: DataView = new DataView(buffer, offset)
 
   // 注释数据字节长度
   let byteLength: number = dataView.getUint8(2)
 
   // 注释数据
-  const commentBuffer: ArrayBuffer = arrayBuffer.slice(offset + 3, offset + (byteLength += 3))
+  const commentBuffer: ArrayBuffer = buffer.slice(offset + 3, offset + (byteLength += 3))
 
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
@@ -170,10 +182,14 @@ function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Ext
   // real byteLength = index + 1 （1字节）
   byteLength += 1
 
+  // 注释扩展数据
+  const arrayBuffer: ArrayBuffer = buffer.slice(offset, offset + byteLength)
+
   return {
     name: 'comment extension',
     type: EXTENSION_TYPE.comment,
     byteLength,
+    arrayBuffer,
     comment
   }
 }

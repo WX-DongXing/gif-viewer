@@ -1,8 +1,8 @@
-import {decimalToBinary, formatColors, isGif} from './utils'
-import {Extension, Gif, Image, ImageData, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage} from './types'
+import { decimalToBinary, formatColors, isGif } from './utils'
+import { Extension, Gif, Image, ImageData, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage } from './types'
 import {
-  EXTENSION_FLAG,
   EXTENSION_TYPE,
+  EXTENSION_FLAG,
   HEADER_BYTE_LENGTH,
   IMAGE_DATA_END_FLAG,
   IMAGE_DESCRIPTOR_BYTE_LENGTH,
@@ -10,25 +10,26 @@ import {
   LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH,
   TRAILER_FLAG
 } from './constant'
-import {ExtensionFactory} from './factory'
+import { ExtensionFactory } from './factory'
 
 /**
  * 解码逻辑屏幕描述符
  * @param arrayBuffer
  */
 function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreenDescriptor {
+  let byteLength = 0
 
   // 创建数据视图
   const dataView = new DataView(arrayBuffer)
 
   // 以低字节序读取两个字节为宽
-  const width: number = dataView.getUint16(0, true)
+  const width: number = dataView.getUint16(byteLength, true)
 
   // 以低字节序读取两个字节为高
-  const height: number = dataView.getUint16(2, true)
+  const height: number = dataView.getUint16(byteLength += 2, true)
 
   // 获取打包字段
-  const packedField: number = dataView.getUint8(4)
+  const packedField: number = dataView.getUint8(byteLength += 2)
 
   // 解析打包字段
   const fieldBinary: number[] = decimalToBinary(packedField)
@@ -46,12 +47,17 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
   const globalColorTableSize: number = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1
 
   // 背景颜色索引
-  const backgroundColorIndex: number = dataView.getUint8(5)
+  const backgroundColorIndex: number = dataView.getUint8(byteLength += 1)
 
   // 像素宽高比
-  const pixelAspectRatio: number = dataView.getUint8(6)
+  const pixelAspectRatio: number = dataView.getUint8(byteLength += 1)
+
+  // real byteLength = index + 1 （1字节）
+  byteLength += 1
 
   return {
+    byteLength,
+    arrayBuffer,
     width,
     height,
     packedField: {
@@ -61,7 +67,7 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
       globalColorTableSize
     },
     backgroundColorIndex,
-    pixelAspectRatio
+    pixelAspectRatio,
   }
 }
 
@@ -70,23 +76,27 @@ function decodeLogicalScreenDescriptor (arrayBuffer: ArrayBuffer): LogicalScreen
  * @param arrayBuffer
  */
 function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
+
+  // 字节
+  let byteLength = 0
+
   // 数据视图
   const dataView: DataView = new DataView(arrayBuffer)
 
   // 水平偏移
-  const left: number = dataView.getUint16(1, true)
+  const left: number = dataView.getUint16(byteLength += 1, true)
 
   // 垂直偏移
-  const top: number = dataView.getUint16(3, true)
+  const top: number = dataView.getUint16(byteLength += 2, true)
 
   // 子图像宽度
-  const width: number = dataView.getUint16(5, true)
+  const width: number = dataView.getUint16(byteLength += 2, true)
 
   // 子图像高度
-  const height: number = dataView.getUint16(7, true)
+  const height: number = dataView.getUint16(byteLength += 2, true)
 
   // 获取打包字段
-  const packedField: number = dataView.getUint8(9)
+  const packedField: number = dataView.getUint8(byteLength += 2)
 
   // 解析打包字段
   const fieldBinary: number[] = decimalToBinary(packedField)
@@ -106,7 +116,12 @@ function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
   // 本地色彩表大小
   const localColorTableSize: number = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1
 
+  // real byteLength = index + 1
+  byteLength += 1
+
   return {
+    byteLength,
+    arrayBuffer,
     left,
     top,
     width,
@@ -165,7 +180,7 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
  * @param subImageBuffer
  */
 function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
-  // 已解析字节数
+  // 解析字节数
   let byteLength = 0
 
   // 图像控制扩展
@@ -260,15 +275,41 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
 
 /**
  * 解码器
- * @param blob 图像数据
+ * @param file 图像数据
  */
-async function decoder (blob: Blob): Promise<Gif | void> {
+async function decoder (file: Blob | ArrayBuffer | File): Promise<Gif | void> {
+
+  let arrayBuffer: ArrayBuffer
+
+  if (file instanceof Blob) {
+
+    arrayBuffer = await file.arrayBuffer()
+
+  } else if (file instanceof File) {
+
+    arrayBuffer = await new Promise<ArrayBuffer>(resolve => {
+      const fileReader: FileReader = new FileReader()
+      fileReader.onload = () => resolve(fileReader.result as ArrayBuffer)
+      fileReader.readAsArrayBuffer(file)
+    })
+
+  } else if (file instanceof ArrayBuffer) {
+
+    arrayBuffer = file
+
+  } else {
+
+    return console.error('Params file must be Blob or ArrayBuffer of File!')
+  }
+
+  // gif
   const gif: Gif = new Gif()
 
-  const arrayBuffer: ArrayBuffer = await blob.arrayBuffer()
+  // 解析字节数
+  let byteLength = 0
 
   // 文件类型 6 个字节
-  const headerBuffer: ArrayBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH)
+  const headerBuffer: ArrayBuffer = arrayBuffer.slice(0, byteLength += HEADER_BYTE_LENGTH)
 
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
@@ -281,15 +322,12 @@ async function decoder (blob: Blob): Promise<Gif | void> {
   }
 
   // 逻辑屏幕描述数据 7 个字节
-  const logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH)
+  const logicalScreenBuffer: ArrayBuffer = arrayBuffer.slice(byteLength, byteLength += LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH)
 
   // 解析屏幕逻辑描述符
   const logicalScreenDescriptor: LogicalScreenDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer)
 
   const { globalColorTableFlag, globalColorTableSize } = logicalScreenDescriptor.packedField
-
-  // 解析字节数
-  let byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH
 
   // 如果存在全局色彩表则进行解析
   if (globalColorTableFlag === 1) {
@@ -297,15 +335,13 @@ async function decoder (blob: Blob): Promise<Gif | void> {
     // 全局色彩表字节长度
     const globalColorTableLength: number = 3 * Math.pow(2, globalColorTableSize)
 
-    byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength
-
     // 全局色彩表数据
-    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, byteLength)
+    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(byteLength, byteLength += globalColorTableLength)
 
     // 全局色彩表
     const globalColorTable: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
 
-    Object.assign(gif, { globalColorTable })
+    Object.assign(gif, { globalColorTable, globalColorTableBuffer })
   }
 
   // 子图像组
@@ -316,7 +352,7 @@ async function decoder (blob: Blob): Promise<Gif | void> {
 
   byteLength += subImage.byteLength
 
-  return Object.assign(gif, { version, byteLength, arrayBuffer, logicalScreenDescriptor, subImage })
+  return Object.assign(gif, { version, byteLength, arrayBuffer, headerBuffer, logicalScreenDescriptor, subImage })
 }
 
 export default { decoder }

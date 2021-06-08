@@ -82,7 +82,7 @@
     // 头部字节长度
     var HEADER_BYTE_LENGTH = 6;
     // 屏幕逻辑描述符字节长度
-    var LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH = 13;
+    var LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH = 7;
     // 扩展标识
     var EXTENSION_FLAG = 33;
     // 图像控制扩展标识
@@ -147,18 +147,19 @@
 
     var Gif = /** @class */ (function () {
         function Gif() {
+            this.trailer = Uint8Array.from([TRAILER_FLAG]).buffer;
         }
         return Gif;
     }());
 
     /**
      * 图形控制扩展解码器
-     * @param arrayBuffer
+     * @param buffer
      * @param offset
      */
-    function graphicsControlExtensionDecoder(arrayBuffer, offset) {
+    function graphicsControlExtensionDecoder(buffer, offset) {
         // 创建数据视图
-        var dataView = new DataView(arrayBuffer, offset);
+        var dataView = new DataView(buffer, offset);
         // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
         var byteLength = dataView.getUint8(2) + 4;
         // 打包字段
@@ -177,10 +178,13 @@
         var delayTime = dataView.getUint16(4, true);
         // 透明颜色索引
         var transparentColorIndex = dataView.getUint8(6);
+        // 图形控制扩展数据
+        var arrayBuffer = buffer.slice(offset, offset + byteLength);
         return {
             name: 'graphics control extension',
             type: EXTENSION_TYPE.graphics_control,
             byteLength: byteLength,
+            arrayBuffer: arrayBuffer,
             packedField: {
                 reserved: reserved,
                 disposalMethod: disposalMethod,
@@ -193,19 +197,19 @@
     }
     /**
      * 应用扩展解码器
-     * @param arrayBuffer
+     * @param buffer
      * @param offset
      */
-    function applicationExtensionDecoder(arrayBuffer, offset) {
+    function applicationExtensionDecoder(buffer, offset) {
         var byteLength = 2;
         // 创建数据视图
-        var dataView = new DataView(arrayBuffer, offset);
+        var dataView = new DataView(buffer, offset);
         // 应用数据固定字节长度
         var applicationFixedByteLength = dataView.getUint8(byteLength);
         // 创建 ASCII 解码器
         var ASCIIDecoder = new TextDecoder('utf8');
         // 应用扩展类型 3, 3 + 11
-        var version = ASCIIDecoder.decode(arrayBuffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)));
+        var version = ASCIIDecoder.decode(buffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)));
         var application = { version: version, data: null };
         // 应用数据
         var byte = dataView.getUint8(byteLength);
@@ -222,28 +226,31 @@
             }
             else {
                 // 其他应用扩展读取数据直至为 0
-                application.data = arrayBuffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1));
+                application.data = buffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1));
             }
             byte = dataView.getUint8(byteLength);
         }
         // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
         byteLength += 2;
+        // 应用扩展数据
+        var arrayBuffer = buffer.slice(offset, offset + byteLength);
         return {
             name: 'application extension',
             type: EXTENSION_TYPE.application,
             byteLength: byteLength,
+            arrayBuffer: arrayBuffer,
             application: application
         };
     }
     /**
      * 文本扩展解码器
-     * @param arrayBuffer
+     * @param buffer
      * @param offset
      */
-    function plainTextExtensionDecoder(arrayBuffer, offset) {
+    function plainTextExtensionDecoder(buffer, offset) {
         var byteLength = 2;
         // 创建数据视图
-        var dataView = new DataView(arrayBuffer, offset);
+        var dataView = new DataView(buffer, offset);
         // 文本数据字节长度
         var textBufferLength = dataView.getUint8(byteLength);
         while (textBufferLength !== PLAIN_TEXT_END_FLAG) {
@@ -251,34 +258,40 @@
         }
         // real byteLength = index + 1 （1字节）
         byteLength += 1;
+        // 文本扩展数据
+        var arrayBuffer = buffer.slice(offset, offset + byteLength);
         return {
             name: 'comment extension',
             type: EXTENSION_TYPE.plain_text,
-            byteLength: byteLength
+            byteLength: byteLength,
+            arrayBuffer: arrayBuffer
         };
     }
     /**
      * 注释扩展解码器
-     * @param arrayBuffer
+     * @param buffer
      * @param offset
      */
-    function commentExtensionDecoder(arrayBuffer, offset) {
+    function commentExtensionDecoder(buffer, offset) {
         // 创建数据视图
-        var dataView = new DataView(arrayBuffer, offset);
+        var dataView = new DataView(buffer, offset);
         // 注释数据字节长度
         var byteLength = dataView.getUint8(2);
         // 注释数据
-        var commentBuffer = arrayBuffer.slice(offset + 3, offset + (byteLength += 3));
+        var commentBuffer = buffer.slice(offset + 3, offset + (byteLength += 3));
         // 创建 ASCII 解码器
         var ASCIIDecoder = new TextDecoder('utf8');
         // 注释内容
         var comment = ASCIIDecoder.decode(commentBuffer);
         // real byteLength = index + 1 （1字节）
         byteLength += 1;
+        // 注释扩展数据
+        var arrayBuffer = buffer.slice(offset, offset + byteLength);
         return {
             name: 'comment extension',
             type: EXTENSION_TYPE.comment,
             byteLength: byteLength,
+            arrayBuffer: arrayBuffer,
             comment: comment
         };
     }
@@ -309,14 +322,15 @@
      * @param arrayBuffer
      */
     function decodeLogicalScreenDescriptor(arrayBuffer) {
+        var byteLength = 0;
         // 创建数据视图
         var dataView = new DataView(arrayBuffer);
         // 以低字节序读取两个字节为宽
-        var width = dataView.getUint16(0, true);
+        var width = dataView.getUint16(byteLength, true);
         // 以低字节序读取两个字节为高
-        var height = dataView.getUint16(2, true);
+        var height = dataView.getUint16(byteLength += 2, true);
         // 获取打包字段
-        var packedField = dataView.getUint8(4);
+        var packedField = dataView.getUint8(byteLength += 2);
         // 解析打包字段
         var fieldBinary = decimalToBinary(packedField);
         // 全局颜色表标识
@@ -328,10 +342,14 @@
         // 全局颜色表大小
         var globalColorTableSize = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1;
         // 背景颜色索引
-        var backgroundColorIndex = dataView.getUint8(5);
+        var backgroundColorIndex = dataView.getUint8(byteLength += 1);
         // 像素宽高比
-        var pixelAspectRatio = dataView.getUint8(6);
+        var pixelAspectRatio = dataView.getUint8(byteLength += 1);
+        // real byteLength = index + 1 （1字节）
+        byteLength += 1;
         return {
+            byteLength: byteLength,
+            arrayBuffer: arrayBuffer,
             width: width,
             height: height,
             packedField: {
@@ -349,18 +367,20 @@
      * @param arrayBuffer
      */
     function decodeImageDescriptor(arrayBuffer) {
+        // 字节
+        var byteLength = 0;
         // 数据视图
         var dataView = new DataView(arrayBuffer);
         // 水平偏移
-        var left = dataView.getUint16(1, true);
+        var left = dataView.getUint16(byteLength += 1, true);
         // 垂直偏移
-        var top = dataView.getUint16(3, true);
+        var top = dataView.getUint16(byteLength += 2, true);
         // 子图像宽度
-        var width = dataView.getUint16(5, true);
+        var width = dataView.getUint16(byteLength += 2, true);
         // 子图像高度
-        var height = dataView.getUint16(7, true);
+        var height = dataView.getUint16(byteLength += 2, true);
         // 获取打包字段
-        var packedField = dataView.getUint8(9);
+        var packedField = dataView.getUint8(byteLength += 2);
         // 解析打包字段
         var fieldBinary = decimalToBinary(packedField);
         // 本地色彩表标识
@@ -373,7 +393,11 @@
         var reserved = parseInt(fieldBinary.slice(3, 5).join(''), 2);
         // 本地色彩表大小
         var localColorTableSize = parseInt(fieldBinary.slice(5, 8).join(''), 2) + 1;
+        // real byteLength = index + 1
+        byteLength += 1;
         return {
+            byteLength: byteLength,
+            arrayBuffer: arrayBuffer,
             left: left,
             top: top,
             width: width,
@@ -420,7 +444,7 @@
      * @param subImageBuffer
      */
     function decodeSubImages(subImageBuffer) {
-        // 已解析字节数
+        // 解析字节数
         var byteLength = 0;
         // 图像控制扩展
         var graphicsControlExtension = null;
@@ -487,42 +511,60 @@
     }
     /**
      * 解码器
-     * @param blob 图像数据
+     * @param file 图像数据
      */
-    function decoder(blob) {
+    function decoder(file) {
         return __awaiter(this, void 0, void 0, function () {
-            var gif, arrayBuffer, headerBuffer, ASCIIDecoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImage;
+            var arrayBuffer, gif, byteLength, headerBuffer, ASCIIDecoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImage;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        gif = new Gif();
-                        return [4 /*yield*/, blob.arrayBuffer()
-                            // 文件类型 6 个字节
-                        ];
+                        if (!(file instanceof Blob)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, file.arrayBuffer()];
                     case 1:
                         arrayBuffer = _b.sent();
-                        headerBuffer = arrayBuffer.slice(0, HEADER_BYTE_LENGTH);
+                        return [3 /*break*/, 5];
+                    case 2:
+                        if (!(file instanceof File)) return [3 /*break*/, 4];
+                        return [4 /*yield*/, new Promise(function (resolve) {
+                                var fileReader = new FileReader();
+                                fileReader.onload = function () { return resolve(fileReader.result); };
+                                fileReader.readAsArrayBuffer(file);
+                            })];
+                    case 3:
+                        arrayBuffer = _b.sent();
+                        return [3 /*break*/, 5];
+                    case 4:
+                        if (file instanceof ArrayBuffer) {
+                            arrayBuffer = file;
+                        }
+                        else {
+                            return [2 /*return*/, console.error('Params file must be Blob or ArrayBuffer of File!')];
+                        }
+                        _b.label = 5;
+                    case 5:
+                        gif = new Gif();
+                        byteLength = 0;
+                        headerBuffer = arrayBuffer.slice(0, byteLength += HEADER_BYTE_LENGTH);
                         ASCIIDecoder = new TextDecoder('utf8');
                         version = ASCIIDecoder.decode(headerBuffer);
                         if (!isGif(version)) {
                             return [2 /*return*/, console.error('Not Gif!')];
                         }
-                        logicalScreenBuffer = arrayBuffer.slice(HEADER_BYTE_LENGTH, LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH);
+                        logicalScreenBuffer = arrayBuffer.slice(byteLength, byteLength += LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH);
                         logicalScreenDescriptor = decodeLogicalScreenDescriptor(logicalScreenBuffer);
                         _a = logicalScreenDescriptor.packedField, globalColorTableFlag = _a.globalColorTableFlag, globalColorTableSize = _a.globalColorTableSize;
-                        byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH;
                         // 如果存在全局色彩表则进行解析
                         if (globalColorTableFlag === 1) {
                             globalColorTableLength = 3 * Math.pow(2, globalColorTableSize);
-                            byteLength = LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH + globalColorTableLength;
-                            globalColorTableBuffer = arrayBuffer.slice(LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH, byteLength);
+                            globalColorTableBuffer = arrayBuffer.slice(byteLength, byteLength += globalColorTableLength);
                             globalColorTable = formatColors(new Uint8Array(globalColorTableBuffer));
-                            Object.assign(gif, { globalColorTable: globalColorTable });
+                            Object.assign(gif, { globalColorTable: globalColorTable, globalColorTableBuffer: globalColorTableBuffer });
                         }
                         subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength);
                         subImage = decodeSubImages(subImageBuffer);
                         byteLength += subImage.byteLength;
-                        return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImage: subImage })];
+                        return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, headerBuffer: headerBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImage: subImage })];
                 }
             });
         });

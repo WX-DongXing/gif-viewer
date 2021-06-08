@@ -9,13 +9,7 @@ createApp({
 
     const fileChange = async ({ target: { files } }) => {
       const [file] = files
-      const dataUrl = await new Promise(resolve => {
-        const fileReader = new FileReader()
-        fileReader.onload = () => resolve(fileReader.result)
-        fileReader.readAsDataURL(file)
-      })
-      const blob = await (await fetch(dataUrl)).blob()
-      const gif = await decoder(blob)
+      const gif = await decoder(file)
       console.log(gif)
     }
 

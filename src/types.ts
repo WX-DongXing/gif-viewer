@@ -1,4 +1,9 @@
-import { EXTENSION_TYPE } from './constant'
+import { EXTENSION_TYPE, TRAILER_FLAG } from './constant'
+
+interface Buffer {
+  byteLength: number
+  arrayBuffer: ArrayBuffer
+}
 
 interface LogicalPackedField {
   globalColorTableFlag: number
@@ -7,7 +12,7 @@ interface LogicalPackedField {
   globalColorTableSize: number
 }
 
-interface LogicalScreenDescriptor {
+interface LogicalScreenDescriptor extends Buffer {
   width: number
   height: number
   packedField: LogicalPackedField
@@ -36,10 +41,9 @@ interface Application {
   data?: ArrayBuffer
 }
 
-interface Extension {
+interface Extension extends Buffer {
   name: string
   type: EXTENSION_TYPE
-  byteLength: number
   packedField?: ExtensionPackedField
   // graphics control
   delayTime?: number
@@ -69,15 +73,6 @@ interface SubImage {
   images?: Image[]
 }
 
-class Gif {
-  version: string
-  byteLength: number
-  arrayBuffer: ArrayBuffer
-  logicalScreenDescriptor: LogicalScreenDescriptor
-  globalColorTable: RGB[]
-  subImages: SubImage[]
-}
-
 interface ImagePackedField {
   localColorTableFlag: number
   interlaceFlag: number
@@ -86,12 +81,24 @@ interface ImagePackedField {
   localColorTableSize: number
 }
 
-interface ImageDescriptor {
+interface ImageDescriptor extends Buffer {
   left: number
   top: number
   width: number
   height: number
   packedField: ImagePackedField
+}
+
+class Gif {
+  version: string
+  byteLength: number
+  headerBuffer: ArrayBuffer
+  arrayBuffer: ArrayBuffer
+  logicalScreenDescriptor: LogicalScreenDescriptor
+  globalColorTable: RGB[]
+  globalColorTableBuffer: ArrayBuffer
+  subImages: SubImage[]
+  trailer: ArrayBuffer = Uint8Array.from([TRAILER_FLAG]).buffer
 }
 
 export {
