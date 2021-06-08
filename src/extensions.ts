@@ -1,5 +1,11 @@
-import { Extension } from './types'
-import {APPLICATION_END_FLAG, APPLICATION_NETSCAPE, EXTENSION_TYPE, PLAIN_TEXT_END_FLAG} from './constant'
+import {Application, Extension} from './types'
+import {
+  APPLICATION_END_FLAG,
+  APPLICATION_NETSCAPE,
+  APPLICATION_XML_DATA,
+  EXTENSION_TYPE,
+  PLAIN_TEXT_END_FLAG
+} from './constant'
 import { decimalToBinary } from './utils'
 
 /**
@@ -70,18 +76,15 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
 
-  // 应用扩展类型
-  const version = ASCIIDecoder.decode(arrayBuffer.slice(offset + byteLength + 1, offset + byteLength + 1 + applicationFixedByteLength))
+  // 应用扩展类型 3, 3 + 11
+  const version = ASCIIDecoder.decode(arrayBuffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)))
 
-  const application = { version, data: [] }
+  const application: Application = { version, data: null }
 
-  byteLength += applicationFixedByteLength
+  // 应用数据
+  let byte: number = dataView.getUint8(byteLength)
 
-  while (byteLength < arrayBuffer.byteLength) {
-    // 应用数据长度
-    const applicationByteLength: number = dataView.getUint8(byteLength += 1)
-
-    if (applicationByteLength === APPLICATION_END_FLAG) break
+  while (byte !== APPLICATION_END_FLAG) {
 
     // 如果为 Netscape 2.0 应用扩展，三个字节
     if (version === APPLICATION_NETSCAPE) {
@@ -92,16 +95,21 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
       // 后两个字节为循环次数，0 为无限循环
       const to = dataView.getUint16(byteLength += 1, true)
 
+      // 两个字节合并（1字节）
       byteLength += 1
 
       Object.assign(application, { from, to })
-    } else {
-      application.data.push(arrayBuffer.slice(offset + byteLength, offset + (byteLength += applicationByteLength)))
+
+    } else if (version === APPLICATION_XML_DATA) {
+
+      application.data = arrayBuffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1))
     }
+
+    byte = dataView.getUint8(byteLength)
   }
 
-  // 结束标识 （1字节）
-  byteLength += 1
+  // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
+  byteLength += 2
 
   return {
     name: 'application extension',

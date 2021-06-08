@@ -105,6 +105,8 @@
     var APPLICATION_END_FLAG = 0;
     // 应用扩展 Netscape 2.0
     var APPLICATION_NETSCAPE = 'NETSCAPE2.0';
+    // 应用扩展 XMP Data XMP
+    var APPLICATION_XML_DATA = 'XMP DataXMP';
     // 结束标识
     var TRAILER_FLAG = 59;
 
@@ -204,30 +206,29 @@
         var applicationFixedByteLength = dataView.getUint8(byteLength);
         // 创建 ASCII 解码器
         var ASCIIDecoder = new TextDecoder('utf8');
-        // 应用扩展类型
-        var version = ASCIIDecoder.decode(arrayBuffer.slice(offset + byteLength + 1, offset + byteLength + 1 + applicationFixedByteLength));
-        var application = { version: version, data: [] };
-        byteLength += applicationFixedByteLength;
-        while (byteLength < arrayBuffer.byteLength) {
-            // 应用数据长度
-            var applicationByteLength = dataView.getUint8(byteLength += 1);
-            if (applicationByteLength === APPLICATION_END_FLAG)
-                break;
+        // 应用扩展类型 3, 3 + 11
+        var version = ASCIIDecoder.decode(arrayBuffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)));
+        var application = { version: version, data: null };
+        // 应用数据
+        var byte = dataView.getUint8(byteLength);
+        while (byte !== APPLICATION_END_FLAG) {
             // 如果为 Netscape 2.0 应用扩展，三个字节
             if (version === APPLICATION_NETSCAPE) {
                 // 第一个字节为1
                 var from = dataView.getUint8(byteLength += 1);
                 // 后两个字节为循环次数，0 为无限循环
                 var to = dataView.getUint16(byteLength += 1, true);
+                // 两个字节合并（1字节）
                 byteLength += 1;
                 Object.assign(application, { from: from, to: to });
             }
-            else {
-                application.data.push(arrayBuffer.slice(offset + byteLength, offset + (byteLength += applicationByteLength)));
+            else if (version === APPLICATION_XML_DATA) {
+                application.data = arrayBuffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1));
             }
+            byte = dataView.getUint8(byteLength);
         }
-        // 结束标识 （1字节）
-        byteLength += 1;
+        // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
+        byteLength += 2;
         return {
             name: 'application extension',
             type: EXTENSION_TYPE.application,
@@ -395,22 +396,20 @@
      */
     function decodeImageData(arraybuffer) {
         var byteLength = 0;
+        console.log(new Uint8Array(arraybuffer));
         // 数据视图
         var dataView = new DataView(arraybuffer);
         // 最小代码尺度
         var minCodeSize = dataView.getUint8(byteLength);
         // 子图像数据
         var imageData = { minCodeSize: minCodeSize, imageDataBuffers: [] };
-        byteLength += 1;
-        while (byteLength < arraybuffer.byteLength) {
-            // 最小代码尺度下一个字节便是图像数据字节长度
-            var imageDataByteLength = dataView.getUint8(byteLength);
-            // 如果下一条数据为终止则跳出循环
-            if (imageDataByteLength === IMAGE_DATA_END_FLAG)
-                break;
+        // 最小代码尺度下一个字节便是图像数据字节长度
+        var imageDataByteLength = dataView.getUint8(byteLength += 1);
+        while (imageDataByteLength !== IMAGE_DATA_END_FLAG) {
             // 图像数据
             var imageDataBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength);
             imageData.imageDataBuffers.push(imageDataBuffer);
+            imageDataByteLength = dataView.getUint8(byteLength);
         }
         return imageData;
     }
@@ -422,66 +421,64 @@
         // 已解析字节数
         var byteLength = 0;
         // 子图像数据
-        var subImages = [{}];
+        var subImage = { extensions: [], images: [], byteLength: byteLength };
+        // 子图像数据视图
         var subDataView = new DataView(subImageBuffer);
-        while (byteLength < subImageBuffer.byteLength) {
-            // 当前子图像
-            var subImage = subImages[subImages.length - 1];
-            // 读取第一个字节判断标识
-            var flag = subDataView.getUint8(byteLength);
+        // 标识
+        var flag = subDataView.getUint8(byteLength);
+        while (flag !== TRAILER_FLAG) {
+            console.log('flag: ', flag);
             // 如果是描述符标识则解析描述符
             if (flag === EXTENSION_FLAG) {
                 // 扩展标识后一个字节判断扩展类型
                 var extensionFlag = subDataView.getUint8(byteLength + 1);
+                console.log('extension flag: ', extensionFlag);
                 // 根据扩展标识创建不同的扩展解析器
                 var extensionDecoder = ExtensionFactory.create(extensionFlag);
                 // 解析扩展
                 var extension = extensionDecoder(subImageBuffer, byteLength);
-                if (subImage.extensions) {
-                    subImage.extensions.push(extension);
-                }
-                else {
-                    subImage.extensions = [extension];
-                }
+                subImage.extensions.push(extension);
                 byteLength += extension.byteLength;
             }
             else if (flag === IMAGE_DESCRIPTOR_FLAG) {
+                var image = {};
+                subImage.images.push(image);
                 // 图像描述符数据十个字节
                 var imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH);
                 // 解析图像描述符
                 var imageDescriptor = decodeImageDescriptor(imageDescriptorBuffer);
-                subImage.imageDescriptor = imageDescriptor;
+                Object.assign(image, { imageDescriptor: imageDescriptor });
                 var _a = imageDescriptor.packedField, localColorTableFlag = _a.localColorTableFlag, localColorTableSize = _a.localColorTableSize;
                 // 本地色彩表紧跟着图像描述符，如果存在则解析本地图像表，
                 if (localColorTableFlag === 1) {
                     // 本地色彩表字节长度
                     var localColorTableLength = 3 * Math.pow(2, localColorTableSize);
                     // 本地色彩表数据
-                    var localColorTableBuffer = subImageBuffer.slice(byteLength, localColorTableLength);
-                    byteLength += localColorTableLength;
+                    var localColorTableBuffer = subImageBuffer.slice(byteLength, byteLength += localColorTableLength);
                     // 本地色彩表
-                    subImage.localColorTable = formatColors(new Uint8Array(localColorTableBuffer));
+                    var localColorTable = formatColors(new Uint8Array(localColorTableBuffer));
+                    Object.assign(image, { localColorTable: localColorTable });
                 }
+                console.log(new Uint8Array(subImageBuffer.slice(0, byteLength)));
+                console.log(new Uint8Array(subImageBuffer.slice(byteLength, subImageBuffer.byteLength)));
                 // 图像数据在图像描述符或本地色彩表之后，解析图像数据
                 var imageDataBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength);
                 // 解码子图像数据
                 var imageData = decodeImageData(imageDataBuffer);
-                byteLength += imageDataBuffer.byteLength;
-                subImage.imageData = imageData;
-                if (subDataView.getUint8(byteLength - 1) !== TRAILER_FLAG) {
-                    subImages.push({});
-                }
-            }
-            else if (flag === TRAILER_FLAG) {
-                // 达到结尾标识表明已经解析完成
-                byteLength = subImageBuffer.byteLength;
+                byteLength += imageDataBuffer.byteLength - 1;
+                Object.assign(image, { imageData: imageData });
+                console.log('image: ', image);
             }
             else {
                 console.error('子图像解析异常！');
                 break;
             }
+            // 读取第一个字节判断标识
+            flag = subDataView.getUint8(byteLength);
         }
-        return subImages;
+        // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
+        byteLength += 1;
+        return Object.assign(subImage, { byteLength: byteLength });
     }
     /**
      * 解码器
@@ -489,7 +486,7 @@
      */
     function decoder(blob) {
         return __awaiter(this, void 0, void 0, function () {
-            var gif, arrayBuffer, headerBuffer, ASCIIDecoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImages;
+            var gif, arrayBuffer, headerBuffer, ASCIIDecoder, version, logicalScreenBuffer, logicalScreenDescriptor, _a, globalColorTableFlag, globalColorTableSize, byteLength, globalColorTableLength, globalColorTableBuffer, globalColorTable, subImageBuffer, subImage;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -518,9 +515,9 @@
                             Object.assign(gif, { globalColorTable: globalColorTable });
                         }
                         subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength);
-                        subImages = decodeSubImages(subImageBuffer);
-                        byteLength += subImageBuffer.byteLength;
-                        return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImages: subImages })];
+                        subImage = decodeSubImages(subImageBuffer);
+                        byteLength += subImage.byteLength;
+                        return [2 /*return*/, Object.assign(gif, { version: version, byteLength: byteLength, arrayBuffer: arrayBuffer, logicalScreenDescriptor: logicalScreenDescriptor, subImage: subImage })];
                 }
             });
         });
@@ -530,3 +527,4 @@
     return index;
 
 })));
+//# sourceMappingURL=bundle.js.map

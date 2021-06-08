@@ -13,3 +13,4 @@ theme/src
 *.ntvs*
 *.njsproj
 *.sln
+*.map

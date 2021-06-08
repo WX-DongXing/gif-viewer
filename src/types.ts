@@ -33,7 +33,7 @@ interface Application {
   version: string
   from?: number
   to?: number
-  data?: any[]
+  data?: ArrayBuffer
 }
 
 interface Extension {
@@ -50,11 +50,21 @@ interface Extension {
   application?: Application
 }
 
-interface SubImage {
-  extensions?: Extension[]
-  imageDescriptor?: any
+interface ImageData {
+  minCodeSize: number
+  imageDataBuffers: ArrayBuffer[]
+}
+
+interface Image {
+  imageDescriptor?: ImageDescriptor
   localColorTable?: RGB[]
-  imageData?: any
+  imageData?: ImageData
+}
+
+interface SubImage {
+  byteLength: number
+  extensions?: Extension[]
+  images?: Image[]
 }
 
 class Gif {
@@ -82,17 +92,14 @@ interface ImageDescriptor {
   packedField: ImagePackedField
 }
 
-interface ImageData {
-  minCodeSize: number
-  imageDataBuffers: ArrayBuffer[]
-}
-
 export {
   Gif,
   LogicalScreenDescriptor,
   RGB,
   Extension,
   SubImage,
+  Image,
+  Application,
   ImageDescriptor,
   ImageData
 }
