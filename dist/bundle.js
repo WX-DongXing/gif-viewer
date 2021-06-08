@@ -241,17 +241,15 @@
      * @param offset
      */
     function plainTextExtensionDecoder(arrayBuffer, offset) {
-        var byteLength = 1;
+        var byteLength = 2;
         // 创建数据视图
         var dataView = new DataView(arrayBuffer, offset);
-        while (byteLength < arrayBuffer.byteLength) {
-            // 文本数据字节长度
-            var textBufferLength = dataView.getUint8(byteLength += 1);
-            if (textBufferLength === PLAIN_TEXT_END_FLAG)
-                break;
-            byteLength += textBufferLength;
+        // 文本数据字节长度
+        var textBufferLength = dataView.getUint8(byteLength);
+        while (textBufferLength !== PLAIN_TEXT_END_FLAG) {
+            textBufferLength = dataView.getUint8(byteLength += textBufferLength + 1);
         }
-        // 结束标识（1字节）
+        // real byteLength = index + 1 （1字节）
         byteLength += 1;
         return {
             name: 'comment extension',
@@ -270,13 +268,13 @@
         // 注释数据字节长度
         var byteLength = dataView.getUint8(2);
         // 注释数据
-        var commentBuffer = arrayBuffer.slice(offset + 3, byteLength + offset + 3);
+        var commentBuffer = arrayBuffer.slice(offset + 3, offset + (byteLength += 3));
         // 创建 ASCII 解码器
         var ASCIIDecoder = new TextDecoder('utf8');
         // 注释内容
         var comment = ASCIIDecoder.decode(commentBuffer);
-        // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
-        byteLength += 4;
+        // real byteLength = index + 1 （1字节）
+        byteLength += 1;
         return {
             name: 'comment extension',
             type: EXTENSION_TYPE.comment,

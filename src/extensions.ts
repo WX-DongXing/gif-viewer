@@ -124,20 +124,19 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
  * @param offset
  */
 function plainTextExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Extension {
-  let byteLength = 1
+  let byteLength = 2
 
   // 创建数据视图
   const dataView: DataView = new DataView(arrayBuffer, offset)
 
-  while (byteLength < arrayBuffer.byteLength) {
-    // 文本数据字节长度
-    const textBufferLength: number = dataView.getUint8(byteLength += 1)
+  // 文本数据字节长度
+  let textBufferLength: number = dataView.getUint8(byteLength)
 
-    if (textBufferLength === PLAIN_TEXT_END_FLAG) break
-    byteLength += textBufferLength
+  while (textBufferLength !== PLAIN_TEXT_END_FLAG) {
+    textBufferLength = dataView.getUint8(byteLength += textBufferLength + 1)
   }
 
-  // 结束标识（1字节）
+  // real byteLength = index + 1 （1字节）
   byteLength += 1
 
   return {
@@ -160,7 +159,7 @@ function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Ext
   let byteLength: number = dataView.getUint8(2)
 
   // 注释数据
-  const commentBuffer: ArrayBuffer = arrayBuffer.slice(offset + 3, byteLength + offset + 3)
+  const commentBuffer: ArrayBuffer = arrayBuffer.slice(offset + 3, offset + (byteLength += 3))
 
   // 创建 ASCII 解码器
   const ASCIIDecoder: TextDecoder = new TextDecoder('utf8')
@@ -168,8 +167,8 @@ function commentExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number): Ext
   // 注释内容
   const comment = ASCIIDecoder.decode(commentBuffer)
 
-  // 扩展标志（1字节） + 扩展类型标志（1字节）+ 字节数量（1字节） + 结尾标识（1字节）
-  byteLength += 4
+  // real byteLength = index + 1 （1字节）
+  byteLength += 1
 
   return {
     name: 'comment extension',
