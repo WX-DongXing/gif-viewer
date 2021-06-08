@@ -1,9 +1,8 @@
 import {Application, Extension} from './types'
 import {
+  EXTENSION_TYPE,
   APPLICATION_END_FLAG,
   APPLICATION_NETSCAPE,
-  APPLICATION_XML_DATA,
-  EXTENSION_TYPE,
   PLAIN_TEXT_END_FLAG
 } from './constant'
 import { decimalToBinary } from './utils'
@@ -100,8 +99,8 @@ function applicationExtensionDecoder (arrayBuffer: ArrayBuffer, offset: number):
 
       Object.assign(application, { from, to })
 
-    } else if (version === APPLICATION_XML_DATA) {
-
+    } else {
+      // 其他应用扩展读取数据直至为 0
       application.data = arrayBuffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1))
     }
 

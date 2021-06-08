@@ -1,4 +1,4 @@
-import {EXTENSION_TYPE, GIF_VERSION} from './constant'
+import { EXTENSION_TYPE } from './constant'
 
 interface LogicalPackedField {
   globalColorTableFlag: number
@@ -51,11 +51,13 @@ interface Extension {
 }
 
 interface ImageData {
+  byteLength: number
   minCodeSize: number
   imageDataBuffers: ArrayBuffer[]
 }
 
 interface Image {
+  graphicsControlExtension?: Extension
   imageDescriptor?: ImageDescriptor
   localColorTable?: RGB[]
   imageData?: ImageData

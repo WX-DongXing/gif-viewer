@@ -1,17 +1,11 @@
-import { isGif, decimalToBinary, formatColors } from './utils'
-import {
-  Extension,
-  Gif,
-  ImageDescriptor,
-  LogicalScreenDescriptor,
-  RGB,
-  SubImage,
-  ImageData,
-  Image
-} from './types'
+import {decimalToBinary, formatColors, isGif} from './utils'
+import {Extension, Gif, Image, ImageData, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage} from './types'
 import {
   EXTENSION_FLAG,
-  HEADER_BYTE_LENGTH, IMAGE_DATA_END_FLAG, IMAGE_DESCRIPTOR_BYTE_LENGTH,
+  EXTENSION_TYPE,
+  HEADER_BYTE_LENGTH,
+  IMAGE_DATA_END_FLAG,
+  IMAGE_DESCRIPTOR_BYTE_LENGTH,
   IMAGE_DESCRIPTOR_FLAG,
   LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH,
   TRAILER_FLAG
@@ -134,16 +128,14 @@ function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
 function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
   let byteLength = 0
 
-  console.log(new Uint8Array(arraybuffer))
-
   // 数据视图
   const  dataView: DataView = new DataView(arraybuffer)
 
   // 最小代码尺度
   const minCodeSize: number = dataView.getUint8(byteLength)
 
-  // 子图像数据
-  const imageData: ImageData = { minCodeSize, imageDataBuffers: [] }
+  // 图像数据
+  const imageDataBuffers: ArrayBuffer[] = []
 
   // 最小代码尺度下一个字节便是图像数据字节长度
   let imageDataByteLength: number = dataView.getUint8(byteLength += 1)
@@ -153,12 +145,19 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
     // 图像数据
     const imageDataBuffer: ArrayBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength)
 
-    imageData.imageDataBuffers.push(imageDataBuffer)
+    imageDataBuffers.push(imageDataBuffer)
 
     imageDataByteLength = dataView.getUint8(byteLength)
   }
 
-  return imageData
+  // real byteLength = index + 1 （1字节）
+  byteLength += 1
+
+  return {
+    byteLength,
+    minCodeSize,
+    imageDataBuffers
+  }
 }
 
 /**
@@ -168,6 +167,9 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
 function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
   // 已解析字节数
   let byteLength = 0
+
+  // 图像控制扩展
+  let graphicsControlExtension: Extension = null
 
   // 子图像数据
   const subImage: SubImage = { extensions: [], images: [], byteLength }
@@ -179,7 +181,6 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
   let flag: number = subDataView.getUint8(byteLength)
 
   while (flag !== TRAILER_FLAG) {
-    console.log('flag: ', flag)
 
     // 如果是描述符标识则解析描述符
     if (flag === EXTENSION_FLAG) {
@@ -187,23 +188,24 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
       // 扩展标识后一个字节判断扩展类型
       const extensionFlag = subDataView.getUint8(byteLength + 1)
 
-      console.log('extension flag: ', extensionFlag)
-
       // 根据扩展标识创建不同的扩展解析器
       const extensionDecoder = ExtensionFactory.create(extensionFlag)
 
       // 解析扩展
       const extension: Extension = extensionDecoder(subImageBuffer, byteLength)
 
-      subImage.extensions.push(extension)
+      // 如果为图像控制扩展，将其置于子图像中，其余的置于扩展中
+      if (extension.type === EXTENSION_TYPE.graphics_control) {
+        graphicsControlExtension = extension
+      } else {
+        subImage.extensions.push(extension)
+      }
 
       byteLength += extension.byteLength
 
     } else if (flag === IMAGE_DESCRIPTOR_FLAG) {
 
-      const image: Image = {}
-
-      subImage.images.push(image)
+      const image: Image = { graphicsControlExtension }
 
       // 图像描述符数据十个字节
       const imageDescriptorBuffer = subImageBuffer.slice(byteLength, byteLength += IMAGE_DESCRIPTOR_BYTE_LENGTH)
@@ -229,20 +231,17 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
         Object.assign(image, { localColorTable })
       }
 
-      console.log(new Uint8Array(subImageBuffer.slice(0, byteLength)))
-      console.log(new Uint8Array(subImageBuffer.slice(byteLength, subImageBuffer.byteLength)))
-
       // 图像数据在图像描述符或本地色彩表之后，解析图像数据
       const imageDataBuffer: ArrayBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength)
 
       // 解码子图像数据
       const imageData: ImageData = decodeImageData(imageDataBuffer)
 
-      byteLength += imageDataBuffer.byteLength - 1
+      byteLength += imageData.byteLength
 
       Object.assign(image, { imageData })
 
-      console.log('image: ', image)
+      subImage.images.push(image)
 
     } else {
       console.error('子图像解析异常！')
@@ -253,7 +252,7 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
     flag = subDataView.getUint8(byteLength)
   }
 
-  // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
+  // real byteLength = index + 1
   byteLength += 1
 
   return Object.assign(subImage, { byteLength })
