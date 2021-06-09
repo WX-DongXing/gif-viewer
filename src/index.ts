@@ -355,4 +355,4 @@ async function decoder (file: Blob | ArrayBuffer | File): Promise<Gif | void> {
   return Object.assign(gif, { version, byteLength, arrayBuffer, headerBuffer, logicalScreenDescriptor, subImage })
 }
 
-export default { decoder }
+export default { decoder, Gif }
