@@ -1,5 +1,5 @@
 import nodeResolve from 'rollup-plugin-node-resolve'
-import typescript from '@rollup/plugin-typescript'
+import typescript from 'rollup-plugin-typescript2'
 import serve from 'rollup-plugin-serve'
 import livereload from 'rollup-plugin-livereload'
 
@@ -15,13 +15,14 @@ export default {
     {
       file: 'lib/index.esm.js',
       format: 'es',
-      name: 'gifViewer',
       sourcemap: true
     }
   ],
   plugins: [
     nodeResolve(),
-    typescript(),
+    typescript({
+      useTsconfigDeclarationDir: true
+    }),
     serve(),
     livereload()
   ]
