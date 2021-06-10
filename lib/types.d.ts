@@ -46,6 +46,7 @@ interface ImageData {
     byteLength: number;
     minCodeSize: number;
     imageDataBuffers: ArrayBuffer[];
+    imageRGBColors: RGB[];
 }
 interface Image {
     graphicsControlExtension?: Extension;
@@ -72,6 +73,10 @@ interface ImageDescriptor extends Buffer {
     height: number;
     packedField: ImagePackedField;
 }
+interface BufferConcat {
+    buffer: Uint8Array;
+    byteLength: number;
+}
 declare class Gif {
     version: string;
     byteLength: number;
@@ -83,4 +88,4 @@ declare class Gif {
     subImages: SubImage[];
     trailer: ArrayBuffer;
 }
-export { Gif, LogicalScreenDescriptor, RGB, Extension, SubImage, Image, Application, ImageDescriptor, ImageData };
+export { Gif, LogicalScreenDescriptor, RGB, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };

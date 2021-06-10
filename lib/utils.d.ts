@@ -6,7 +6,7 @@ import { RGB } from './types';
 declare function isGif(version: string): boolean;
 /**
  * 十进制转八位二进制数组
- * @param value 十进制值
+ * @param value
  */
 declare function decimalToBinary(value: number): number[];
 /**

@@ -11,11 +11,10 @@ function isGif (version: string): boolean {
 
 /**
  * 十进制转八位二进制数组
- * @param value 十进制值
+ * @param value
  */
 function decimalToBinary(value: number): number[] {
-  const binaryArray = value.toString(2).split('').map(bs => parseInt(bs))
-  return [...new Array(8 - binaryArray.length).fill(0), ...binaryArray]
+  return [ ...value.toString(2).padStart(8, '0').split('').map(bs => parseInt(bs)) ]
 }
 
 /**

@@ -1,5 +1,15 @@
 import { decimalToBinary, formatColors, isGif } from './utils'
-import { Extension, Gif, Image, ImageData, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage } from './types'
+import {
+  BufferConcat,
+  Extension,
+  Gif,
+  Image,
+  ImageData,
+  ImageDescriptor,
+  LogicalScreenDescriptor,
+  RGB,
+  SubImage
+} from './types'
 import {
   EXTENSION_TYPE,
   EXTENSION_FLAG,
@@ -8,7 +18,7 @@ import {
   IMAGE_DESCRIPTOR_BYTE_LENGTH,
   IMAGE_DESCRIPTOR_FLAG,
   LOGICAL_SCREEN_DESCRIPTOR_BYTE_LENGTH,
-  TRAILER_FLAG
+  TRAILER_FLAG, CLEAR_CODE, END_OF_INFORMATION
 } from './constant'
 import { ExtensionFactory } from './factory'
 
@@ -138,9 +148,116 @@ function decodeImageDescriptor (arrayBuffer: ArrayBuffer): ImageDescriptor {
 
 /**
  * 解码图像数据
- * @param arraybuffer
+ * @param bufferArray 图像数据
+ * @param minCodeSize 最小代码尺度
+ * @param colorTable 本地或全局色彩表
  */
-function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
+function decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[]): RGB[] {
+
+  // 编码表
+  let codeTable: Map<number, string> = new Map()
+
+  // 重置编码表
+  const resetCodeTable = (): void=> {
+    codeTable = new Map(Object.keys(colorTable).map((key: string) => [parseInt(key), key]))
+
+    // 设置清除码
+    codeTable.set(colorTable.length, CLEAR_CODE)
+
+    // 设置结束码
+    codeTable.set(colorTable.length + 1, END_OF_INFORMATION)
+  }
+
+  resetCodeTable()
+
+  const codes: number[] = []
+
+  // 解码输出
+  let output = ''
+
+  // 索引
+  let index = 0
+
+  // 字节长度
+  let byteSize = minCodeSize + 1
+
+  // 解析为图像字节数组
+  const byteArray: string[] = bufferArray.reduce((acc: string[], byte: number) => {
+    const bytes = byte.toString(2).padStart(8, '0').split('')
+    while (bytes.length) {
+      acc.push(bytes.pop())
+    }
+    return acc
+  }, [])
+
+  while (byteArray.length) {
+
+    // 二进制字节
+    let byteValue: string
+
+    (function (size: number) {
+      while (size) {
+        byteValue = byteArray.shift() + (byteValue ?? '')
+        size -= 1
+      }
+    })(byteSize)
+
+    // 十进制字节
+    const code: number = parseInt(byteValue, 2)
+
+    // 当前 code 对应颜色索引值
+    const colorIndex: string = codeTable.get(code)
+
+    // 如果对应清除码，则重置编码表
+    if (colorIndex === CLEAR_CODE) {
+      resetCodeTable()
+      continue
+    } else if (colorIndex === END_OF_INFORMATION) {
+      // 如果对应结束码，结束解码
+      break
+    }
+
+    // 将 code 值存储
+    codes.push(code)
+
+    // 如果为第一个值，直接将颜色索引输出
+    if (index === 0) {
+      output += colorIndex
+    } else {
+      if (codeTable.has(code)) {
+        const P = codeTable.get(codes[index - 1])
+        const [K] = colorIndex.split(',')
+        codeTable.set(codeTable.size, P ? `${P},${K}` : K)
+        output += `,${colorIndex}`
+      } else {
+        const P = codeTable.get(codes[index - 1]) ?? ''
+        const [K] = P.split(',')
+        codeTable.set(codeTable.size, P ? `${P},${K}` : K)
+        output += `,${P},${K}`
+      }
+    }
+
+    // 索引增加
+    index += 1
+
+    // 字节数根据编码表而更新
+    if (codeTable.size >= Math.pow(2, byteSize)) {
+      byteSize += 1
+    }
+  }
+
+  return output.split(',').reduce((acc: RGB[], cur: string) => {
+    acc.push(colorTable[cur])
+    return acc
+  }, [])
+}
+
+/**
+ * 解码图像数据
+ * @param arraybuffer
+ * @param colorTable
+ */
+function decodeImageData (arraybuffer: ArrayBuffer, colorTable: RGB[]): ImageData {
   let byteLength = 0
 
   // 数据视图
@@ -168,18 +285,36 @@ function decodeImageData (arraybuffer: ArrayBuffer): ImageData {
   // real byteLength = index + 1 （1字节）
   byteLength += 1
 
+  // 图像数据总字节数
+  const imageDataBuffersLength: number = imageDataBuffers.reduce((acc: number, cur: ArrayBuffer) => {
+    acc += cur.byteLength
+    return acc
+  }, 0)
+
+  // 总图像数据
+  const { buffer }: BufferConcat = imageDataBuffers.reduce((acc: BufferConcat, cur: ArrayBuffer) => {
+    acc.buffer.set(new Uint8Array(cur), acc.byteLength)
+    acc.byteLength += cur.byteLength
+    return acc
+  }, { buffer: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
+
+  // 解码图像数据
+  const imageRGBColors: RGB[] = decodeImageDataBuffer(buffer, minCodeSize, colorTable)
+
   return {
     byteLength,
     minCodeSize,
-    imageDataBuffers
+    imageDataBuffers,
+    imageRGBColors
   }
 }
 
 /**
  * 解析子图像组数据
  * @param subImageBuffer
+ * @param globalColorTable
  */
-function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
+function decodeSubImages (subImageBuffer: ArrayBuffer, globalColorTable: RGB[]): SubImage {
   // 解析字节数
   let byteLength = 0
 
@@ -250,7 +385,7 @@ function decodeSubImages (subImageBuffer: ArrayBuffer): SubImage {
       const imageDataBuffer: ArrayBuffer = subImageBuffer.slice(byteLength, subImageBuffer.byteLength)
 
       // 解码子图像数据
-      const imageData: ImageData = decodeImageData(imageDataBuffer)
+      const imageData: ImageData = decodeImageData(imageDataBuffer, image.localColorTable || globalColorTable)
 
       byteLength += imageData.byteLength
 
@@ -348,7 +483,7 @@ async function decoder (file: Blob | ArrayBuffer | File): Promise<Gif | void> {
   const subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength)
 
   // 解码子图像数据
-  const subImage: SubImage = decodeSubImages(subImageBuffer)
+  const subImage: SubImage = decodeSubImages(subImageBuffer, gif.globalColorTable)
 
   byteLength += subImage.byteLength
 

@@ -58,6 +58,7 @@ interface ImageData {
   byteLength: number
   minCodeSize: number
   imageDataBuffers: ArrayBuffer[]
+  imageRGBColors: RGB[]
 }
 
 interface Image {
@@ -89,6 +90,11 @@ interface ImageDescriptor extends Buffer {
   packedField: ImagePackedField
 }
 
+interface BufferConcat {
+  buffer: Uint8Array
+  byteLength: number
+}
+
 class Gif {
   version: string
   byteLength: number
@@ -110,5 +116,6 @@ export {
   Image,
   Application,
   ImageDescriptor,
-  ImageData
+  ImageData,
+  BufferConcat
 }
