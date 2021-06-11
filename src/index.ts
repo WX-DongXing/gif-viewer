@@ -157,18 +157,8 @@ function decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, col
   // 编码表
   let codeTable: Map<number, string> = new Map()
 
-  // 重置编码表
-  const resetCodeTable = (): void=> {
-    codeTable = new Map(Object.keys(colorTable).map((key: string) => [parseInt(key), key]))
-
-    // 设置清除码
-    codeTable.set(colorTable.length, CLEAR_CODE)
-
-    // 设置结束码
-    codeTable.set(colorTable.length + 1, END_OF_INFORMATION)
-  }
-
-  resetCodeTable()
+  // 编码表最大索引值
+  let codeTableMaxIndex = 0
 
   const codes: number[] = []
 
@@ -179,7 +169,26 @@ function decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, col
   let index = 0
 
   // 字节长度
-  let byteSize = minCodeSize + 1
+  let byteSize = 0
+
+  // 重置编码表
+  const resetCodeTable = (): void=> {
+    codeTable = new Map(Object.keys(colorTable).map((key: string) => [parseInt(key), key]))
+
+    // 以最小代码尺度，采用幂等计算特殊码的值，但是存在空余的情况
+    codeTableMaxIndex = Math.pow(2, minCodeSize)
+
+    // 设置清除码
+    codeTable.set(codeTableMaxIndex, CLEAR_CODE)
+
+    // 设置结束码
+    codeTable.set(codeTableMaxIndex += 1, END_OF_INFORMATION)
+
+    // 设置字节长度
+    byteSize = minCodeSize + 1
+  }
+
+  resetCodeTable()
 
   // 解析为图像字节数组
   const byteArray: string[] = bufferArray.reduce((acc: string[], byte: number) => {
@@ -220,20 +229,45 @@ function decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, col
     // 将 code 值存储
     codes.push(code)
 
+    // if (index === 4079) {
+    //   console.log('4079: ', code, codeTable)
+    // }
+
+    if (index ===  4093) {
+      console.log('4093: ', code, codeTable)
+    }
+
+    if (index ===  4094) {
+      console.log('4094: ', code, codeTable)
+    }
+
     // 如果为第一个值，直接将颜色索引输出
     if (index === 0) {
+      // console.log('first: ', code, codeTable.size, colorIndex)
       output += colorIndex
     } else {
+
       if (codeTable.has(code)) {
         const P = codeTable.get(codes[index - 1])
-        const [K] = colorIndex.split(',')
-        codeTable.set(codeTable.size, P ? `${P},${K}` : K)
+        const K = colorIndex.substring(0, 1)
+        const R = (P && K) ? `${P},${K}` : (P || K)
+        codeTable.set(codeTableMaxIndex += 1, R)
         output += `,${colorIndex}`
+        // !colorIndex && console.log('has: ', index, code, codes[index - 1], P)
       } else {
+
         const P = codeTable.get(codes[index - 1]) ?? ''
-        const [K] = P.split(',')
-        codeTable.set(codeTable.size, P ? `${P},${K}` : K)
-        output += `,${P},${K}`
+        const K = P.substring(0, 1)
+        const R = (P && K) ? `${P},${K}` : (P || K)
+        codeTable.set(codeTableMaxIndex += 1, R)
+        output += `,${R}`
+        // console.log('sec: ', codeTableMaxIndex, R)
+
+        // if (index === 1) {
+        //   // console.log('secend: ', code, codes[index - 1], codeTable.has(code), codeTable.get(codes[index - 1]))
+        //   console.log('sec: ', codeTableMaxIndex, R)
+        // }
+        // !R && console.log('not: ', index, codes[index - 1], P, K, codeTable)
       }
     }
 
@@ -241,10 +275,14 @@ function decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, col
     index += 1
 
     // 字节数根据编码表而更新
-    if (codeTable.size >= Math.pow(2, byteSize)) {
+    if (codeTableMaxIndex + 1 >= Math.pow(2, byteSize) && byteSize < 12) {
       byteSize += 1
     }
   }
+
+  // console.log(codes)
+
+  // console.log(codeTable)
 
   return output.split(',').reduce((acc: RGB[], cur: string) => {
     acc.push(colorTable[cur])

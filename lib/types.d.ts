@@ -21,6 +21,9 @@ interface RGB {
     g: number;
     b: number;
 }
+interface RGBA extends RGB {
+    a: number;
+}
 interface ExtensionPackedField {
     reserved?: number;
     disposalMethod?: number;
@@ -88,4 +91,4 @@ declare class Gif {
     subImages: SubImage[];
     trailer: ArrayBuffer;
 }
-export { Gif, LogicalScreenDescriptor, RGB, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };
+export { Gif, LogicalScreenDescriptor, RGB, RGBA, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };

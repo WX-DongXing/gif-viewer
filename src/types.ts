@@ -26,6 +26,10 @@ interface RGB {
   b: number
 }
 
+interface RGBA extends RGB {
+  a: number
+}
+
 interface ExtensionPackedField {
   // graphics control
   reserved?: number
@@ -111,6 +115,7 @@ export {
   Gif,
   LogicalScreenDescriptor,
   RGB,
+  RGBA,
   Extension,
   SubImage,
   Image,

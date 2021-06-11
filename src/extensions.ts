@@ -26,10 +26,10 @@ function graphicsControlExtensionDecoder (buffer: ArrayBuffer, offset: number): 
   const fieldBinary: number[] = decimalToBinary(packedField)
 
   // 保留字段
-  const reserved: number = parseInt(fieldBinary.slice(0, 3).join(''))
+  const reserved: number = parseInt(fieldBinary.slice(0, 3).join(''), 2)
 
   // 处置方法
-  const disposalMethod: number = parseInt(fieldBinary.slice(3, 6).join(''))
+  const disposalMethod: number = parseInt(fieldBinary.slice(3, 6).join(''), 2)
 
   // 用户输入标识
   const userInputFlag: number = fieldBinary[6]
