@@ -3,6 +3,9 @@ interface Buffer {
     byteLength: number;
     arrayBuffer: ArrayBuffer;
 }
+interface Header extends Buffer {
+    version: string;
+}
 interface LogicalPackedField {
     globalColorTableFlag: number;
     colorResolution: number;
@@ -23,6 +26,9 @@ interface RGB {
 }
 interface RGBA extends RGB {
     a: number;
+}
+interface ColorTable extends Buffer {
+    colors: RGB[];
 }
 interface ExtensionPackedField {
     reserved?: number;
@@ -48,13 +54,13 @@ interface Extension extends Buffer {
 interface ImageData {
     byteLength: number;
     minCodeSize: number;
-    imageDataBuffers: ArrayBuffer[];
-    imageRGBColors: RGB[];
+    ArrayBuffers: ArrayBuffer[];
+    colors: RGBA[];
 }
 interface Image {
     graphicsControlExtension?: Extension;
     imageDescriptor?: ImageDescriptor;
-    localColorTable?: RGB[];
+    localColorTable?: ColorTable;
     imageData?: ImageData;
 }
 interface SubImage {
@@ -80,15 +86,16 @@ interface BufferConcat {
     buffer: Uint8Array;
     byteLength: number;
 }
-declare class Gif {
-    version: string;
+declare class Gif implements Buffer {
     byteLength: number;
-    headerBuffer: ArrayBuffer;
     arrayBuffer: ArrayBuffer;
+    header: Header | void;
     logicalScreenDescriptor: LogicalScreenDescriptor;
-    globalColorTable: RGB[];
-    globalColorTableBuffer: ArrayBuffer;
+    globalColorTable: ColorTable;
     subImages: SubImage[];
     trailer: ArrayBuffer;
 }
-export { Gif, LogicalScreenDescriptor, RGB, RGBA, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };
+interface GifHandler {
+    decode(file: Blob | ArrayBuffer | File): Promise<Gif | void>;
+}
+export { Gif, Header, GifHandler, LogicalScreenDescriptor, RGB, RGBA, ColorTable, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };

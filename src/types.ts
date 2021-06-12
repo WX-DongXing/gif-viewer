@@ -1,8 +1,12 @@
-import { EXTENSION_TYPE, TRAILER_FLAG } from './constant'
+import {EXTENSION_TYPE, GIF_VERSION, TRAILER_FLAG} from './constant'
 
 interface Buffer {
   byteLength: number
   arrayBuffer: ArrayBuffer
+}
+
+interface Header extends Buffer {
+  version: string
 }
 
 interface LogicalPackedField {
@@ -28,6 +32,10 @@ interface RGB {
 
 interface RGBA extends RGB {
   a: number
+}
+
+interface ColorTable extends Buffer {
+  colors: RGB[]
 }
 
 interface ExtensionPackedField {
@@ -61,14 +69,14 @@ interface Extension extends Buffer {
 interface ImageData {
   byteLength: number
   minCodeSize: number
-  imageDataBuffers: ArrayBuffer[]
-  imageRGBColors: RGB[]
+  ArrayBuffers: ArrayBuffer[]
+  colors: RGBA[]
 }
 
 interface Image {
   graphicsControlExtension?: Extension
   imageDescriptor?: ImageDescriptor
-  localColorTable?: RGB[]
+  localColorTable?: ColorTable
   imageData?: ImageData
 }
 
@@ -99,23 +107,28 @@ interface BufferConcat {
   byteLength: number
 }
 
-class Gif {
-  version: string
+class Gif implements Buffer {
   byteLength: number
-  headerBuffer: ArrayBuffer
   arrayBuffer: ArrayBuffer
+  header: Header | void
   logicalScreenDescriptor: LogicalScreenDescriptor
-  globalColorTable: RGB[]
-  globalColorTableBuffer: ArrayBuffer
+  globalColorTable: ColorTable
   subImages: SubImage[]
   trailer: ArrayBuffer = Uint8Array.from([TRAILER_FLAG]).buffer
 }
 
+interface GifHandler {
+  decode (file: Blob | ArrayBuffer | File): Promise<Gif | void>
+}
+
 export {
   Gif,
+  Header,
+  GifHandler,
   LogicalScreenDescriptor,
   RGB,
   RGBA,
+  ColorTable,
   Extension,
   SubImage,
   Image,

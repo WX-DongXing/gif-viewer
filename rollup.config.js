@@ -9,7 +9,7 @@ export default {
     {
       file: 'lib/index.js',
       format: 'umd',
-      name: 'gifViewer',
+      name: 'GifViewer',
       sourcemap: true
     },
     {
