@@ -39,6 +39,10 @@ main {
   border: 1px solid rgba(0, 0, 0, .1);
 }
 
+.row {
+  margin-bottom: 24px;
+}
+
 .panel {
   display: flex;
   flex-flow: column nowrap;
@@ -69,12 +73,17 @@ main {
   flex-flow: row nowrap;
   justify-content: flex-start;
   align-items: center;
-  height: 32px;
+  min-height: 32px;
 }
 
 .panel-row span {
-  min-width: 70px;
-  margin-right: 8px;
+  min-width: 40px;
+  margin-right: 12px;
+}
+
+.panel-row p {
+  margin: 0;
+  word-break: break-all;
 }
 
 .panel + .panel {
@@ -92,6 +101,12 @@ main {
   display: flex;
   flex-flow: row nowrap;
   justify-content: space-between;
+}
+
+.row-start {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: start;
 }
 
 .none-flex {

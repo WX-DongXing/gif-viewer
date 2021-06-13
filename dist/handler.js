@@ -9,7 +9,7 @@ createApp({
       <h3>GIF Viewer</h3>
     </header>
     <main>
-      <div class="gif-check">
+      <div class="row row-start">
 
         <div class="panel none-flex">
           <p class="panel-header">GIF</p>
@@ -59,7 +59,6 @@ createApp({
         <div class="panel full-width">
           <p class="panel-header">逻辑屏幕描述符</p>
           <div class="row-between full">
-
             <div class="panel-content">
               <div class="panel-row">
                 <span>宽度:</span>
@@ -81,15 +80,15 @@ createApp({
                 <p>{{ gif?.logicalScreenDescriptor?.backgroundColorIndex }}</p>
               </div>
 
-            </div>
-
-            <div class="panel-content">
               <div class="panel-row">
                 <span>全局色彩表标识:</span>
                 <p>{{ gif?.logicalScreenDescriptor?.packedField?.globalColorTableFlag }}</p>
               </div>
 
-               <div class="panel-row">
+            </div>
+            <div class="panel-content">
+
+              <div class="panel-row">
                 <span>全局色彩表大小:</span>
                 <p>{{ gif?.logicalScreenDescriptor?.packedField?.globalColorTableSize }}</p>
               </div>
@@ -104,7 +103,49 @@ createApp({
                 <p>{{ gif?.logicalScreenDescriptor?.packedField?.colorResolution }}</p>
               </div>
             </div>
+          </div>
+        </div>
 
+      </div>
+
+      <div class="row-start">
+
+        <div
+          class="panel none-flex"
+          v-for="(extension, index) of gif?.subImages?.extensions"
+          :key="index"
+         >
+          <p class="panel-header">非控制类扩展</p>
+          <div class="panel-content">
+            <div class="panel-row">
+              <span>名称:</span>
+              <p>{{ extension.name }}</p>
+            </div>
+
+            <div class="panel-row" v-if="extension?.application?.version">
+              <span>应用版本:</span>
+              <p>{{ extension?.application?.version }}</p>
+            </div>
+
+            <div class="panel-row" v-if="extension?.application?.version === 'NETSCAPE2.0'">
+              <span>循环次数:</span>
+              <p>{{ extension?.application?.to === 0 ? 'Infinity' : extension?.application?.to }}</p>
+            </div>
+
+            <div class="panel-row" v-if="extension.transparentColorIndex">
+              <span>透明颜色索引:</span>
+              <p>{{ extension.transparentColorIndex }}</p>
+            </div>
+
+            <div class="panel-row" v-if="extension.delayTime">
+              <span>延迟时间:</span>
+              <p>{{ extension.delayTime }}</p>
+            </div>
+
+            <div class="panel-row" v-if="extension.comment">
+              <span>评论:</span>
+              <p>{{ extension.comment }}</p>
+            </div>
           </div>
         </div>
 
