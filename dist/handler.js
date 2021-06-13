@@ -11,7 +11,7 @@ createApp({
     <main>
       <div class="gif-check">
 
-        <div class="panel">
+        <div class="panel none-flex">
           <p class="panel-header">GIF</p>
           <div class="panel-content center gif-wrap" @click="file.click()">
             <input type="file" ref="file" style="display: none" accept="image/gif" @change="handleFileChange">
@@ -19,7 +19,7 @@ createApp({
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel none-flex">
           <p class="panel-header">基本信息</p>
           <div class="panel-content">
             <div class="panel-row">
@@ -49,10 +49,62 @@ createApp({
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel none-flex">
           <p class="panel-header">全局色彩表</p>
           <div class="panel-content center">
             <canvas width="128" height="128" ref="globalColorTable"></canvas>
+          </div>
+        </div>
+
+        <div class="panel full-width">
+          <p class="panel-header">逻辑屏幕描述符</p>
+          <div class="row-between full">
+
+            <div class="panel-content">
+              <div class="panel-row">
+                <span>宽度:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.width }}</p>
+              </div>
+
+               <div class="panel-row">
+                <span>高度:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.height }}</p>
+              </div>
+
+              <div class="panel-row">
+                <span>像素比:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.pixelAspectRatio }}</p>
+              </div>
+
+              <div class="panel-row">
+                <span>背景颜色索引:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.backgroundColorIndex }}</p>
+              </div>
+
+            </div>
+
+            <div class="panel-content">
+              <div class="panel-row">
+                <span>全局色彩表标识:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.packedField?.globalColorTableFlag }}</p>
+              </div>
+
+               <div class="panel-row">
+                <span>全局色彩表大小:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.packedField?.globalColorTableSize }}</p>
+              </div>
+
+              <div class="panel-row">
+                <span>排序规则:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.packedField?.sortFlag }}</p>
+              </div>
+
+              <div class="panel-row">
+                <span>色彩分辨率:</span>
+                <p>{{ gif?.logicalScreenDescriptor?.packedField?.colorResolution }}</p>
+              </div>
+            </div>
+
           </div>
         </div>
 
