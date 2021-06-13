@@ -533,11 +533,11 @@ class GifViewer implements GifHandler {
     const subImageBuffer = arrayBuffer.slice(byteLength, arrayBuffer.byteLength)
 
     // 解码子图像数据
-    const subImages: SubImage = this.decodeSubImages(subImageBuffer)
+    const { byteLength: subImageByteLength, extensions, images }: SubImage = this.decodeSubImages(subImageBuffer)
 
-    byteLength += subImages.byteLength
+    byteLength += subImageByteLength
 
-    return Object.assign(this.gif, { byteLength, subImages })
+    return Object.assign(this.gif, { byteLength, arrayBuffer, extensions, images })
   }
 
 }

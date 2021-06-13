@@ -41,6 +41,8 @@ interface Application {
     from?: number;
     to?: number;
     data?: ArrayBuffer;
+    identifier?: string;
+    authentication?: string;
 }
 interface Extension extends Buffer {
     name: string;
@@ -92,7 +94,8 @@ declare class Gif implements Buffer {
     header: Header | void;
     logicalScreenDescriptor: LogicalScreenDescriptor;
     globalColorTable: ColorTable;
-    subImages: SubImage[];
+    extensions?: Extension[];
+    images: Image[];
     trailer: ArrayBuffer;
 }
 interface GifHandler {

@@ -39,7 +39,7 @@ createApp({
 
             <div class="panel-row">
               <span>子图像数:</span>
-              <p>{{ gif?.subImages?.images?.length }}</p>
+              <p>{{ gif?.images?.length }}</p>
             </div>
 
             <div class="panel-row">
@@ -56,7 +56,7 @@ createApp({
           </div>
         </div>
 
-        <div class="panel full-width">
+        <div class="panel panel-twice">
           <p class="panel-header">逻辑屏幕描述符</p>
           <div class="row-between full">
             <div class="panel-content">
@@ -112,19 +112,24 @@ createApp({
 
         <div
           class="panel none-flex"
-          v-for="(extension, index) of gif?.subImages?.extensions"
+          v-for="(extension, index) of gif?.extensions"
           :key="index"
          >
-          <p class="panel-header">非控制类扩展</p>
+          <p class="panel-header">扩展</p>
           <div class="panel-content">
             <div class="panel-row">
               <span>名称:</span>
               <p>{{ extension.name }}</p>
             </div>
 
-            <div class="panel-row" v-if="extension?.application?.version">
-              <span>应用版本:</span>
-              <p>{{ extension?.application?.version }}</p>
+            <div class="panel-row" v-if="extension?.application?.identifier">
+              <span>标识:</span>
+              <p>{{ extension?.application?.identifier }}</p>
+            </div>
+
+             <div class="panel-row" v-if="extension?.application?.authentication">
+              <span>鉴别码:</span>
+              <p>{{ extension?.application?.authentication }}</p>
             </div>
 
             <div class="panel-row" v-if="extension?.application?.version === 'NETSCAPE2.0'">

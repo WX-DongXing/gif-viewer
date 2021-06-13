@@ -82,7 +82,13 @@ function applicationExtensionDecoder (buffer: ArrayBuffer, offset: number): Exte
   // 应用扩展类型 3, 3 + 11
   const version = ASCIIDecoder.decode(buffer.slice(offset + (byteLength += 1), offset + (byteLength += applicationFixedByteLength)))
 
-  const application: Application = { version, data: null }
+  // 应用程序标识
+  const identifier = version.substring(0, 8)
+
+  // 应用程序鉴别码
+  const authentication = version.substring(8, 11)
+
+  const application: Application = { version, data: null, identifier, authentication }
 
   // 应用数据
   let byte: number = dataView.getUint8(byteLength)

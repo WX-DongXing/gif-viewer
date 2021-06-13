@@ -90,6 +90,10 @@ main {
   margin-left: 24px;
 }
 
+.panel-twice {
+  width: 480px;
+}
+
 .center {
   display: flex;
   flex-flow: column nowrap;

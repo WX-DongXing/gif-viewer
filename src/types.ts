@@ -51,6 +51,8 @@ interface Application {
   from?: number
   to?: number
   data?: ArrayBuffer
+  identifier?: string
+  authentication?: string
 }
 
 interface Extension extends Buffer {
@@ -113,7 +115,8 @@ class Gif implements Buffer {
   header: Header | void
   logicalScreenDescriptor: LogicalScreenDescriptor
   globalColorTable: ColorTable
-  subImages: SubImage[]
+  extensions?: Extension[]
+  images: Image[]
   trailer: ArrayBuffer = Uint8Array.from([TRAILER_FLAG]).buffer
 }
 
