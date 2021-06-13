@@ -1,0 +1,88 @@
+body {
+  width: 100vw;
+  height: 100vh;
+  background: whitesmoke;
+}
+
+header {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-content: center;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 24px;
+  background: white;
+}
+
+main {
+  width: 100vw;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+.gif-check {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+}
+
+.gif-wrap {
+  height: 176px !important;
+}
+
+.gif-example {
+  max-width: 100%;
+  max-height: 100%;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, .1);
+}
+
+.panel {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: space-between;
+  width: 240px;
+  min-height: 240px;
+  background: white;
+  border-radius: 4px;
+  box-sizing: border-box;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.panel-header {
+  flex: none;
+  height: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.panel-content {
+  height: 100%;
+  margin-top: 8px;
+}
+
+.panel-row {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  height: 32px;
+}
+
+.panel-row span {
+  min-width: 70px;
+}
+
+.center {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.panel + .panel {
+  margin-left: 24px;
+}
