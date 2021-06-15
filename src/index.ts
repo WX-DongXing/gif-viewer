@@ -187,6 +187,9 @@ class GifViewer implements GifHandler {
    */
   decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], transparentColorIndex: number): RGBA[] {
 
+    // 色彩表索引
+    const colorTableMap = new Map(Object.entries(colorTable))
+
     // 编码表
     let codeTable: Map<number, string> = new Map()
 
@@ -298,8 +301,14 @@ class GifViewer implements GifHandler {
       }
     }
 
-    return output.split(',').reduce((acc: RGBA[], cur: string) => {
-      acc.push({ ...colorTable[cur], a: (parseInt(cur) === transparentColorIndex) ? 0 : 1 })
+    return output.split(',').reduce((acc: RGBA[], colorIndex: string) => {
+      const colors = colorTableMap.get(colorIndex)
+      !colors && console.log(colors, colorIndex)
+      if (colors) {
+        const { r, g, b } = colors
+        const a = (parseInt(colorIndex) === transparentColorIndex) ? 0 : 1
+        acc.push({ r, g, b, a })
+      }
       return acc
     }, [])
   }
@@ -320,7 +329,7 @@ class GifViewer implements GifHandler {
     const minCodeSize: number = dataView.getUint8(byteLength)
 
     // 图像数据
-    const ArrayBuffers: ArrayBuffer[] = []
+    const arrayBuffers: ArrayBuffer[] = []
 
     // 最小代码尺度下一个字节便是图像数据字节长度
     let imageDataByteLength: number = dataView.getUint8(byteLength += 1)
@@ -330,7 +339,7 @@ class GifViewer implements GifHandler {
       // 图像数据
       const imageDataBuffer: ArrayBuffer = arraybuffer.slice(byteLength += 1, byteLength += imageDataByteLength)
 
-      ArrayBuffers.push(imageDataBuffer)
+      arrayBuffers.push(imageDataBuffer)
 
       imageDataByteLength = dataView.getUint8(byteLength)
     }
@@ -339,25 +348,25 @@ class GifViewer implements GifHandler {
     byteLength += 1
 
     // 图像数据总字节数
-    const imageDataBuffersLength: number = ArrayBuffers.reduce((acc: number, cur: ArrayBuffer) => {
+    const imageDataBuffersLength: number = arrayBuffers.reduce((acc: number, cur: ArrayBuffer) => {
       acc += cur.byteLength
       return acc
     }, 0)
 
     // 总图像数据
-    const { buffer }: BufferConcat = ArrayBuffers.reduce((acc: BufferConcat, cur: ArrayBuffer) => {
-      acc.buffer.set(new Uint8Array(cur), acc.byteLength)
+    const { uintArray }: BufferConcat = arrayBuffers.reduce((acc: BufferConcat, cur: ArrayBuffer) => {
+      acc.uintArray.set(new Uint8Array(cur), acc.byteLength)
       acc.byteLength += cur.byteLength
       return acc
-    }, { buffer: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
+    }, { uintArray: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
 
     // 解码图像数据
-    // const colors: RGBA[] = this.decodeImageDataBuffer(buffer, minCodeSize, colorTable, transparentColorIndex)
-    const colors: RGBA[] = []
+    const colors: RGBA[] = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, transparentColorIndex)
+
     return {
       byteLength,
       minCodeSize,
-      ArrayBuffers,
+      arrayBuffers,
       colors
     }
   }

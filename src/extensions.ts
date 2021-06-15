@@ -116,7 +116,7 @@ function applicationExtensionDecoder (buffer: ArrayBuffer, offset: number): Exte
     byte = dataView.getUint8(byteLength)
   }
 
-  // real byteLength = index + 1 （1字节
+  // real byteLength = index + 1 （1字节）
   byteLength += 1
 
   // 应用扩展数据

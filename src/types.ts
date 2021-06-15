@@ -71,7 +71,7 @@ interface Extension extends Buffer {
 interface ImageData {
   byteLength: number
   minCodeSize: number
-  ArrayBuffers: ArrayBuffer[]
+  arrayBuffers: ArrayBuffer[]
   colors: RGBA[]
 }
 
@@ -105,7 +105,7 @@ interface ImageDescriptor extends Buffer {
 }
 
 interface BufferConcat {
-  buffer: Uint8Array
+  uintArray: Uint8Array
   byteLength: number
 }
 
