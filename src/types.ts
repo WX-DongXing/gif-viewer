@@ -50,7 +50,7 @@ interface Application {
   version: string
   from?: number
   to?: number
-  data?: ArrayBuffer
+  data?: ArrayBuffer[]
   identifier?: string
   authentication?: string
 }

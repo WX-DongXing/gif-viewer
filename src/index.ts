@@ -447,7 +447,7 @@ class GifViewer implements GifHandler {
         const colorTable: RGB[] = image?.localColorTable?.colors || this.gif.globalColorTable.colors
 
         // 解码子图像数据
-        const imageData: ImageData = this.decodeImageData(imageDataBuffer, colorTable, graphicsControlExtension.transparentColorIndex)
+        const imageData: ImageData = this.decodeImageData(imageDataBuffer, colorTable, graphicsControlExtension?.transparentColorIndex)
 
         byteLength += imageData.byteLength
 

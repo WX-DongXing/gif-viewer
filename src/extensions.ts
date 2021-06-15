@@ -88,7 +88,7 @@ function applicationExtensionDecoder (buffer: ArrayBuffer, offset: number): Exte
   // 应用程序鉴别码
   const authentication = version.substring(8, 11)
 
-  const application: Application = { version, data: null, identifier, authentication }
+  const application: Application = { version, data: [], identifier, authentication }
 
   // 应用数据
   let byte: number = dataView.getUint8(byteLength)
@@ -104,21 +104,20 @@ function applicationExtensionDecoder (buffer: ArrayBuffer, offset: number): Exte
       // 后两个字节为循环次数，0 为无限循环
       const to = dataView.getUint16(byteLength += 1, true)
 
-      // 两个字节合并（1字节）
-      byteLength += 1
+      // 两个字节合并（1字节）+ 结尾字节（1字节）
+      byteLength += 2
 
       Object.assign(application, { from, to })
 
     } else {
-      // 其他应用扩展读取数据直至为 0
-      application.data = buffer.slice(offset + applicationFixedByteLength + 3, offset + (byteLength += 1))
+      application.data.push(buffer.slice(offset + (byteLength += 1), offset + (byteLength += byte)))
     }
 
     byte = dataView.getUint8(byteLength)
   }
 
-  // real byteLength = index + 1 （1字节）+ 结尾字节（1字节）
-  byteLength += 2
+  // real byteLength = index + 1 （1字节
+  byteLength += 1
 
   // 应用扩展数据
   const arrayBuffer: ArrayBuffer = buffer.slice(offset, offset + byteLength)
