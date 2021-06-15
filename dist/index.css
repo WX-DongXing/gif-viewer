@@ -63,6 +63,11 @@ main {
   margin: 0 0 8px 0;
 }
 
+.panel-parse {
+  color: limegreen;
+}
+
+
 .panel-content {
   width: 100%;
   height: 100%;

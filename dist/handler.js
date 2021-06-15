@@ -13,7 +13,10 @@ const app = createApp({
       <div class="row row-start">
 
         <div class="panel none-flex">
-          <p class="panel-header">GIF</p>
+          <div class="row-between">
+            <p class="panel-header">GIF</p>
+            <span class="panel-parse">{{ time }}</span>
+          </div>
           <div class="panel-content center gif-wrap" @click="file.click()">
             <input type="file" ref="file" style="display: none" accept="image/gif" @change="handleFileChange">
             <img class="gif-example" ref="img" :src="source" alt="">
@@ -53,7 +56,7 @@ const app = createApp({
         <div class="panel none-flex">
           <p class="panel-header">全局色彩表</p>
           <div class="panel-content center">
-            <canvas width="128" height="128" ref="globalColorTable"></canvas>
+            <color-table v-if="gif?.globalColorTable?.colors" :colors="gif?.globalColorTable?.colors" />
           </div>
         </div>
 
@@ -266,7 +269,8 @@ const app = createApp({
       img: null,
       file: null,
       gif: null,
-      globalColorTable: null
+      globalColorTable: null,
+      time: 0
     })
 
     const fileSize = computed(() => {
@@ -274,19 +278,11 @@ const app = createApp({
       return state.gif?.byteLength < 1024 ? `${state.gif?.byteLength} b` : `${Math.round(state.gif?.byteLength / 1024)} kb`
     })
 
-    const parseGlobalColorTable = () => {
-      const { colors } = state.gif?.globalColorTable
-      state.globalColorTable.width = 128
-      state.globalColorTable.height = 128
-      const ctx = state.globalColorTable.getContext('2d')
-      ctx.clearRect(0, 0, 128, 128)
-      colors.forEach((color, index) => {
-        const column = Math.floor(index * 8 / 128)
-        const row = (index * 8) % 128
-        const { r, g, b} = color
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
-        ctx.fillRect(row, column * 8, 8, 8);
-      })
+    const decode = async (file) => {
+      const t1 = performance.now()
+      state.gif = await state.gifViewer.decode(file)
+      const t2 = performance.now()
+      state.time = (t2 - t1) < 1000 ? `${(t2 - t1).toFixed(2)} ms` : `${((t2 - t1) / 1000).toFixed(2)} s`
     }
 
     const handleFileChange = ({ target: { files } }) => {
@@ -294,15 +290,13 @@ const app = createApp({
       state.gif = null
       state.source = URL.createObjectURL(file)
       nextTick(async () => {
-        state.gif = await state.gifViewer.decode(file)
-        parseGlobalColorTable()
+        await decode(file)
       })
     }
 
     onMounted(async () => {
       const buffer = await (await fetch(GIF_SOURCE)).arrayBuffer()
-      state.gif = await state.gifViewer.decode(buffer)
-      parseGlobalColorTable()
+      await decode(buffer)
     })
 
     return {
@@ -313,16 +307,43 @@ const app = createApp({
   }
 })
 
+app.component('color-table', {
+  template: `
+    <canvas ref="canvas"></canvas>
+  `,
+  props: {
+    colors: null
+  },
+  setup (props) {
+    const canvas = ref(null)
+    const { colors } = toRefs(props)
+
+    onMounted(() => {
+      canvas.value.width = 128
+      canvas.value.height = 128
+      const ctx = canvas.value.getContext('2d')
+      ctx.clearRect(0, 0, 128, 128)
+      colors.value?.forEach((color, index) => {
+        const column = Math.floor(index * 8 / 128)
+        const row = (index * 8) % 128
+        const { r, g, b} = color
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
+        ctx.fillRect(row, column * 8, 8, 8);
+      })
+    })
+
+    return {
+      canvas
+    }
+  }
+})
+
 app.component('sub-image', {
   template: `
     <canvas ref="canvas"></canvas>
   `,
   props: {
-    image: null,
-    colors: [],
-    width: 0,
-    height: 0,
-    interlaceFlag: 0
+    image: null
   },
   setup (props) {
     const canvas = ref(null)

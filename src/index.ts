@@ -352,8 +352,8 @@ class GifViewer implements GifHandler {
     }, { buffer: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
 
     // 解码图像数据
-    const colors: RGBA[] = this.decodeImageDataBuffer(buffer, minCodeSize, colorTable, transparentColorIndex)
-
+    // const colors: RGBA[] = this.decodeImageDataBuffer(buffer, minCodeSize, colorTable, transparentColorIndex)
+    const colors: RGBA[] = []
     return {
       byteLength,
       minCodeSize,
