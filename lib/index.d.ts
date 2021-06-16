@@ -1,4 +1,4 @@
-import { Extension, Gif, GifHandler, Header, ImageData, ImageDescriptor, LogicalScreenDescriptor, RGB, RGBA, SubImage } from './types';
+import { Extension, Gif, GifHandler, Header, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage, SubImageData } from './types';
 declare class GifViewer implements GifHandler {
     gif: Gif;
     constructor();
@@ -22,16 +22,18 @@ declare class GifViewer implements GifHandler {
      * @param bufferArray 图像数据
      * @param minCodeSize 最小代码尺度
      * @param colorTable 本地或全局色彩表
-     * @param graphicsControlExtension 透明颜色索引
+     * @param imageDescriptor 图像描述符
+     * @param graphicsControlExtension 图像控制扩展
      */
-    decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], graphicsControlExtension: Extension): RGBA[];
+    decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], imageDescriptor: ImageDescriptor, graphicsControlExtension?: Extension): ImageData;
     /**
      * 解码图像数据
      * @param arraybuffer
      * @param colorTable
+     * @param imageDescriptor
      * @param graphicsControlExtension
      */
-    decodeImageData(arraybuffer: ArrayBuffer, colorTable: RGB[], graphicsControlExtension: Extension): ImageData;
+    decodeImageData(arraybuffer: ArrayBuffer, colorTable: RGB[], imageDescriptor: ImageDescriptor, graphicsControlExtension?: Extension): SubImageData;
     /**
      * 解析子图像组数据
      * @param subImageBuffer

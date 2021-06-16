@@ -4,11 +4,10 @@ import {
   Extension,
   Gif, GifHandler, Header,
   Image,
-  ImageData,
   ImageDescriptor,
   LogicalScreenDescriptor,
-  RGB, RGBA,
-  SubImage
+  RGB,
+  SubImage, SubImageData
 } from './types'
 import {
   EXTENSION_TYPE,
@@ -183,12 +182,16 @@ class GifViewer implements GifHandler {
    * @param bufferArray 图像数据
    * @param minCodeSize 最小代码尺度
    * @param colorTable 本地或全局色彩表
-   * @param graphicsControlExtension 透明颜色索引
+   * @param imageDescriptor 图像描述符
+   * @param graphicsControlExtension 图像控制扩展
    */
-  decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], graphicsControlExtension: Extension): RGBA[] {
+  decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], imageDescriptor: ImageDescriptor, graphicsControlExtension?: Extension): ImageData {
+
+    // 子图像宽高
+    const { width, height } = imageDescriptor
 
     // 透明颜色标识及索引
-    const { transparentColorIndex, packedField: { transparentColorFlag } } = graphicsControlExtension
+    const { transparentColorIndex, packedField } = graphicsControlExtension || {}
 
     // 色彩表索引
     const colorTableMap = new Map(Object.entries(colorTable))
@@ -307,24 +310,33 @@ class GifViewer implements GifHandler {
       }
     }
 
-    return output.split(',').reduce((acc: RGBA[], colorIndex: string) => {
+    const t1 = performance.now()
+    const imageDataArray = output.split(',').reduce((acc: number[], colorIndex: string) => {
       const colors = colorTableMap.get(colorIndex)
       if (colors) {
         const { r, g, b } = colors
-        const a = (transparentColorFlag === 1 && parseInt(colorIndex) === transparentColorIndex) ? 0 : 1
-        acc.push({ r, g, b, a })
+        const a = (packedField?.transparentColorFlag === 1 && parseInt(colorIndex) === transparentColorIndex) ? 0 : 255
+        acc.push(...[r, g, b, a])
       }
       return acc
     }, [])
+
+    const imageData = new ImageData(Uint8ClampedArray.from(imageDataArray), width, height)
+    const t2 = performance.now()
+
+    console.log('compose image data: ', t2 - t1)
+
+    return imageData
   }
 
   /**
    * 解码图像数据
    * @param arraybuffer
    * @param colorTable
+   * @param imageDescriptor
    * @param graphicsControlExtension
    */
-  decodeImageData (arraybuffer: ArrayBuffer, colorTable: RGB[], graphicsControlExtension: Extension): ImageData {
+  decodeImageData (arraybuffer: ArrayBuffer, colorTable: RGB[], imageDescriptor: ImageDescriptor, graphicsControlExtension?: Extension): SubImageData {
     let byteLength = 0
 
     // 数据视图
@@ -366,13 +378,13 @@ class GifViewer implements GifHandler {
     }, { uintArray: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
 
     // 解码图像数据
-    const colors: RGBA[] = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, graphicsControlExtension)
+    const imageData: ImageData = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, imageDescriptor, graphicsControlExtension)
 
     return {
       byteLength,
       minCodeSize,
       arrayBuffers,
-      colors
+      imageData
     }
   }
 
@@ -461,11 +473,11 @@ class GifViewer implements GifHandler {
         const colorTable: RGB[] = image?.localColorTable?.colors || this.gif.globalColorTable.colors
 
         // 解码子图像数据
-        const imageData: ImageData = this.decodeImageData(imageDataBuffer, colorTable, graphicsControlExtension)
+        const subImageData: SubImageData = this.decodeImageData(imageDataBuffer, colorTable, imageDescriptor, graphicsControlExtension)
 
-        byteLength += imageData.byteLength
+        byteLength += subImageData.byteLength
 
-        Object.assign(image, { imageData })
+        Object.assign(image, { subImageData })
 
         subImage.images.push(image)
 

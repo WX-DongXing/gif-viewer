@@ -24,9 +24,6 @@ interface RGB {
     g: number;
     b: number;
 }
-interface RGBA extends RGB {
-    a: number;
-}
 interface ColorTable extends Buffer {
     colors: RGB[];
 }
@@ -53,17 +50,17 @@ interface Extension extends Buffer {
     comment?: string;
     application?: Application;
 }
-interface ImageData {
+interface SubImageData {
     byteLength: number;
     minCodeSize: number;
     arrayBuffers: ArrayBuffer[];
-    colors: RGBA[];
+    imageData: ImageData;
 }
 interface Image {
     graphicsControlExtension?: Extension;
     imageDescriptor?: ImageDescriptor;
     localColorTable?: ColorTable;
-    imageData?: ImageData;
+    subImageData?: SubImageData;
 }
 interface SubImage {
     byteLength: number;
@@ -101,4 +98,4 @@ declare class Gif implements Buffer {
 interface GifHandler {
     decode(file: Blob | ArrayBuffer | File): Promise<Gif | void>;
 }
-export { Gif, Header, GifHandler, LogicalScreenDescriptor, RGB, RGBA, ColorTable, Extension, SubImage, Image, Application, ImageDescriptor, ImageData, BufferConcat };
+export { Gif, Header, GifHandler, LogicalScreenDescriptor, RGB, ColorTable, Extension, SubImage, Image, Application, ImageDescriptor, SubImageData, BufferConcat };

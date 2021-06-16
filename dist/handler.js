@@ -352,8 +352,8 @@ app.component('sub-image', {
     const { image } = toRefs(props)
     const MAX_WIDTH = 208
     const {
-      imageDescriptor: { packedField: { interlaceFlag }, width, height },
-      imageData: { colors }
+      imageDescriptor: { width, height },
+      subImageData: { imageData }
     } = image.value
 
     onMounted(() => {
@@ -361,17 +361,7 @@ app.component('sub-image', {
       canvas.value.height = height
       const ctx = canvas.value.getContext('2d')
       ctx.clearRect(0, 0, width, height)
-      colors.forEach((color, index) => {
-        const column = Math.floor(index / width)
-        const row = index % height
-        const { r, g, b, a} = color
-        if (interlaceFlag === 0) {
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`
-          ctx.fillRect(row, column, 1, 1)
-        } else {
-          console.log('interlaceFlag: ', interlaceFlag)
-        }
-      })
+      ctx.putImageData(imageData, 0, 0)
 
       if (width > MAX_WIDTH) {
         canvas.value.style.transform = `scale(${MAX_WIDTH / width})`

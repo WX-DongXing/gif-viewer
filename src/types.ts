@@ -30,10 +30,6 @@ interface RGB {
   b: number
 }
 
-interface RGBA extends RGB {
-  a: number
-}
-
 interface ColorTable extends Buffer {
   colors: RGB[]
 }
@@ -68,18 +64,18 @@ interface Extension extends Buffer {
   application?: Application
 }
 
-interface ImageData {
+interface SubImageData {
   byteLength: number
   minCodeSize: number
   arrayBuffers: ArrayBuffer[]
-  colors: RGBA[]
+  imageData: ImageData
 }
 
 interface Image {
   graphicsControlExtension?: Extension
   imageDescriptor?: ImageDescriptor
   localColorTable?: ColorTable
-  imageData?: ImageData
+  subImageData?: SubImageData
 }
 
 interface SubImage {
@@ -130,13 +126,12 @@ export {
   GifHandler,
   LogicalScreenDescriptor,
   RGB,
-  RGBA,
   ColorTable,
   Extension,
   SubImage,
   Image,
   Application,
   ImageDescriptor,
-  ImageData,
+  SubImageData,
   BufferConcat
 }
