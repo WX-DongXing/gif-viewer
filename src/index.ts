@@ -185,7 +185,10 @@ class GifViewer implements GifHandler {
    * @param colorTable 本地或全局色彩表
    * @param transparentColorIndex 透明颜色索引
    */
-  decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], transparentColorIndex: number): RGBA[] {
+  decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], graphicsControlExtension: Extension): RGBA[] {
+
+    // 透明颜色标识及索引
+    const { transparentColorIndex, packedField: { transparentColorFlag } } = graphicsControlExtension
 
     // 色彩表索引
     const colorTableMap = new Map(Object.entries(colorTable))
@@ -260,7 +263,7 @@ class GifViewer implements GifHandler {
       const colorIndex: string = codeTable.get(code)
 
       // 如果对应清除码，则重置编码表，由于编码速度的限制，编码表不可能无限制增加，最大值超出2的12次方后应重新初始化编码表
-      if (colorIndex === CLEAR_CODE || codeTableMaxIndex + 1 >= Math.pow(2, 12)) {
+      if (colorIndex === CLEAR_CODE) {
         initCodeTable()
         continue
       } else if (colorIndex === END_OF_INFORMATION) {
@@ -278,14 +281,14 @@ class GifViewer implements GifHandler {
 
         if (codeTable.has(code)) {
           const P = codeTable.get(codes[index - 1])
-          const K = colorIndex.substring(0, 1)
+          const [K] = colorIndex.split(',') || []
           const R = (P && K) ? `${P},${K}` : (P || K)
           codeTable.set(codeTableMaxIndex += 1, R)
           output += `,${colorIndex}`
         } else {
 
-          const P = codeTable.get(codes[index - 1]) ?? ''
-          const K = P.substring(0, 1)
+          const P = codeTable.get(codes[index - 1])
+          const [K] = P.split(',') || []
           const R = (P && K) ? `${P},${K}` : (P || K)
           codeTable.set(codeTableMaxIndex += 1, R)
           output += `,${R}`
@@ -296,7 +299,7 @@ class GifViewer implements GifHandler {
       index += 1
 
       // 字节数根据编码表而更新
-      if (codeTableMaxIndex + 1 >= Math.pow(2, byteSize)) {
+      if (codeTableMaxIndex + 1 >= Math.pow(2, byteSize) && byteSize < 12) {
         byteSize += 1
       }
     }
@@ -306,7 +309,7 @@ class GifViewer implements GifHandler {
       !colors && console.log(colors, colorIndex)
       if (colors) {
         const { r, g, b } = colors
-        const a = (parseInt(colorIndex) === transparentColorIndex) ? 0 : 1
+        const a = (transparentColorFlag === 1 && parseInt(colorIndex) === transparentColorIndex) ? 0 : 1
         acc.push({ r, g, b, a })
       }
       return acc
@@ -319,7 +322,7 @@ class GifViewer implements GifHandler {
    * @param colorTable
    * @param transparentColorIndex
    */
-  decodeImageData (arraybuffer: ArrayBuffer, colorTable: RGB[], transparentColorIndex: number): ImageData {
+  decodeImageData (arraybuffer: ArrayBuffer, colorTable: RGB[], graphicsControlExtension: Extension): ImageData {
     let byteLength = 0
 
     // 数据视图
@@ -361,7 +364,7 @@ class GifViewer implements GifHandler {
     }, { uintArray: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
 
     // 解码图像数据
-    const colors: RGBA[] = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, transparentColorIndex)
+    const colors: RGBA[] = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, graphicsControlExtension)
 
     return {
       byteLength,
@@ -456,7 +459,7 @@ class GifViewer implements GifHandler {
         const colorTable: RGB[] = image?.localColorTable?.colors || this.gif.globalColorTable.colors
 
         // 解码子图像数据
-        const imageData: ImageData = this.decodeImageData(imageDataBuffer, colorTable, graphicsControlExtension?.transparentColorIndex)
+        const imageData: ImageData = this.decodeImageData(imageDataBuffer, colorTable, graphicsControlExtension)
 
         byteLength += imageData.byteLength
 
