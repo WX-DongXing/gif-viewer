@@ -3,6 +3,8 @@ import typescript from 'rollup-plugin-typescript2'
 import serve from 'rollup-plugin-serve'
 import livereload from 'rollup-plugin-livereload'
 
+const devPlugins = process.env.NODE_ENV === 'production' ? [] : [serve(), livereload()]
+
 export default {
   input: 'src/index.ts',
   output: [
@@ -23,7 +25,6 @@ export default {
     typescript({
       useTsconfigDeclarationDir: true
     }),
-    serve(),
-    livereload()
+    ...devPlugins
   ]
 }
