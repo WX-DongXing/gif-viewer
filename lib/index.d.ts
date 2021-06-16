@@ -22,14 +22,14 @@ declare class GifViewer implements GifHandler {
      * @param bufferArray 图像数据
      * @param minCodeSize 最小代码尺度
      * @param colorTable 本地或全局色彩表
-     * @param transparentColorIndex 透明颜色索引
+     * @param graphicsControlExtension 透明颜色索引
      */
     decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], graphicsControlExtension: Extension): RGBA[];
     /**
      * 解码图像数据
      * @param arraybuffer
      * @param colorTable
-     * @param transparentColorIndex
+     * @param graphicsControlExtension
      */
     decodeImageData(arraybuffer: ArrayBuffer, colorTable: RGB[], graphicsControlExtension: Extension): ImageData;
     /**

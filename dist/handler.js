@@ -375,6 +375,7 @@ app.component('sub-image', {
 
       if (width > MAX_WIDTH) {
         canvas.value.style.transform = `scale(${MAX_WIDTH / width})`
+        canvas.value.parentNode.style.height = `${height * MAX_WIDTH / width}px`
       }
     })
 
