@@ -308,7 +308,6 @@ class GifViewer implements GifHandler {
       }
     }
 
-    const t1 = performance.now()
     const imageDataArray = output.split(',').reduce((acc: number[], colorIndex: string) => {
       const colors = colorTableMap.get(colorIndex)
       if (colors) {
@@ -319,10 +318,12 @@ class GifViewer implements GifHandler {
       return acc
     }, [])
 
-    const imageData = new ImageData(Uint8ClampedArray.from(imageDataArray), width, height)
-    const t2 = performance.now()
+    if (imageDataArray.length !== width * height * 4) {
+      imageDataArray.push(...new Array(((width * height * 4) - imageDataArray.length) / 4).fill([0, 0, 0, 255]).flat())
+      console.log('ImageData not fit')
+    }
 
-    console.log('compose image data: ', t2 - t1)
+    const imageData: ImageData = new ImageData(Uint8ClampedArray.from(imageDataArray), width, height)
 
     return imageData
   }
