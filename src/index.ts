@@ -200,7 +200,7 @@ class GifViewer implements GifHandler {
     let codeTableMaxIndex = 0
 
     // 编码历史
-    let codes: number[]
+    let codes: Map<number, number>
 
     // 解码输出
     let output = ''
@@ -232,7 +232,7 @@ class GifViewer implements GifHandler {
       index = 0
 
       // 初始化编码历史
-      codes = []
+      codes = new Map()
     }
 
     // 初始化编码表
@@ -275,7 +275,7 @@ class GifViewer implements GifHandler {
       }
 
       // 将 code 值存储
-      codes.push(code)
+      codes.set(index, code)
 
       // 如果为第一个值，直接将颜色索引输出
       if (index === 0) {
@@ -283,14 +283,14 @@ class GifViewer implements GifHandler {
       } else {
 
         if (codeTable.has(code)) {
-          const P = codeTable.get(codes[index - 1])
+          const P = codeTable.get(codes.get(index - 1))
           const [K] = colorIndex.split(',') || []
           const R = (P && K) ? `${P},${K}` : (P || K)
           codeTable.set(codeTableMaxIndex += 1, R)
           output += `,${colorIndex}`
         } else {
 
-          const P = codeTable.get(codes[index - 1])
+          const P = codeTable.get(codes.get(index - 1))
           const [K] = P.split(',') || []
           const R = (P && K) ? `${P},${K}` : (P || K)
           codeTable.set(codeTableMaxIndex += 1, R)
