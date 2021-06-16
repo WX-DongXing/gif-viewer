@@ -1,13 +1,11 @@
 import { decimalToBinary, formatColors, isGif } from './utils'
 import {
-  BufferConcat,
-  Extension,
+  BufferConcat, ColorTable,
   Gif, GifHandler, Header,
-  Image,
-  ImageDescriptor,
+  Image, ImageDescriptor,
   LogicalScreenDescriptor,
-  RGB,
-  SubImage, SubImageData
+  SubImage, SubImageData,
+  RGB,Extension,
 } from './types'
 import {
   EXTENSION_TYPE,
@@ -497,6 +495,30 @@ class GifViewer implements GifHandler {
   }
 
   /**
+   * 解码全局色彩表
+   * @param arrayBuffer
+   * @param offset
+   * @param globalColorTableSize
+   */
+  decodeGlobalColorTable (arrayBuffer: ArrayBuffer, offset: number, globalColorTableSize: number): ColorTable {
+
+    // 全局色彩表字节长度
+    const globalColorTableLength: number = 3 * Math.pow(2, globalColorTableSize)
+
+    // 全局色彩表数据
+    const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(offset, offset + globalColorTableLength)
+
+    // 全局色彩表
+    const globalColorTableColors: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
+
+    return {
+      byteLength: globalColorTableLength,
+      arrayBuffer: globalColorTableBuffer,
+      colors: globalColorTableColors
+    }
+  }
+
+  /**
    * 解码GIF
    * @param file
    */
@@ -538,21 +560,11 @@ class GifViewer implements GifHandler {
     // 如果存在全局色彩表则进行解析
     if (globalColorTableFlag === 1) {
 
-      // 全局色彩表字节长度
-      const globalColorTableLength: number = 3 * Math.pow(2, globalColorTableSize)
+      const globalColorTable: ColorTable = this.decodeGlobalColorTable(arrayBuffer, byteLength, globalColorTableSize)
 
-      // 全局色彩表数据
-      const globalColorTableBuffer: ArrayBuffer = arrayBuffer.slice(byteLength, byteLength += globalColorTableLength)
+      byteLength += globalColorTable.byteLength
 
-      // 全局色彩表
-      const globalColorTableColors: RGB[] = formatColors(new Uint8Array(globalColorTableBuffer))
-
-      Object.assign(this.gif, { globalColorTable: {
-          colors: globalColorTableColors,
-          byteLength: globalColorTableLength,
-          arrayBuffer: globalColorTableBuffer
-        }
-      })
+      Object.assign(this.gif, { globalColorTable })
     }
 
     // 子图像组数据

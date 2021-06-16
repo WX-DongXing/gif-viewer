@@ -1,4 +1,4 @@
-import { Extension, Gif, GifHandler, Header, ImageDescriptor, LogicalScreenDescriptor, RGB, SubImage, SubImageData } from './types';
+import { ColorTable, Gif, GifHandler, Header, ImageDescriptor, LogicalScreenDescriptor, SubImage, SubImageData, RGB, Extension } from './types';
 declare class GifViewer implements GifHandler {
     gif: Gif;
     constructor();
@@ -39,6 +39,13 @@ declare class GifViewer implements GifHandler {
      * @param subImageBuffer
      */
     decodeSubImages(subImageBuffer: ArrayBuffer): SubImage;
+    /**
+     * 解码全局色彩表
+     * @param arrayBuffer
+     * @param offset
+     * @param globalColorTableSize
+     */
+    decodeGlobalColorTable(arrayBuffer: ArrayBuffer, offset: number, globalColorTableSize: number): ColorTable;
     /**
      * 解码GIF
      * @param file

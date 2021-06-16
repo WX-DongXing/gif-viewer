@@ -99,6 +99,11 @@ main {
   overflow: auto;
 }
 
+.panel-sub-image, .panel-color-table {
+  width: 208px;
+  height: 176px;
+}
+
 .panel-image + .panel-image, .panel + .panel {
   margin-left: 24px;
 }
