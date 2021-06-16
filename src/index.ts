@@ -194,13 +194,13 @@ class GifViewer implements GifHandler {
     const colorTableMap = new Map(Object.entries(colorTable))
 
     // 编码表
-    let codeTable: Map<number, string> = new Map()
+    let codeTable: Map<number, string>
 
     // 编码表最大索引值
     let codeTableMaxIndex = 0
 
     // 编码历史
-    const codes: number[] = []
+    let codes: number[]
 
     // 解码输出
     let output = ''
@@ -230,6 +230,9 @@ class GifViewer implements GifHandler {
 
       // 初始化索引
       index = 0
+
+      // 初始化编码历史
+      codes = []
     }
 
     // 初始化编码表
@@ -262,7 +265,7 @@ class GifViewer implements GifHandler {
       // 当前 code 对应颜色索引值
       const colorIndex: string = codeTable.get(code)
 
-      // 如果对应清除码，则重置编码表，由于编码速度的限制，编码表不可能无限制增加，最大值超出2的12次方后应重新初始化编码表
+      // 如果对应清除码，则重置编码表
       if (colorIndex === CLEAR_CODE) {
         initCodeTable()
         continue
@@ -276,7 +279,7 @@ class GifViewer implements GifHandler {
 
       // 如果为第一个值，直接将颜色索引输出
       if (index === 0) {
-        output += colorIndex
+        output += `,${colorIndex}`
       } else {
 
         if (codeTable.has(code)) {
@@ -299,14 +302,13 @@ class GifViewer implements GifHandler {
       index += 1
 
       // 字节数根据编码表而更新
-      if (codeTableMaxIndex + 1 >= Math.pow(2, byteSize) && byteSize < 12) {
+      if (codeTableMaxIndex + 1 === Math.pow(2, byteSize) && byteSize < 12) {
         byteSize += 1
       }
     }
 
     return output.split(',').reduce((acc: RGBA[], colorIndex: string) => {
       const colors = colorTableMap.get(colorIndex)
-      !colors && console.log(colors, colorIndex)
       if (colors) {
         const { r, g, b } = colors
         const a = (transparentColorFlag === 1 && parseInt(colorIndex) === transparentColorIndex) ? 0 : 1
