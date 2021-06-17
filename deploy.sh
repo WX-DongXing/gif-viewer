@@ -12,8 +12,6 @@ cp lib/index.js dist
 # cd 到构建输出的目录下
 cd dist
 
-rm -rf .git
-
 git init
 
 git config user.name WX-DongXing
@@ -26,5 +24,7 @@ git commit -m 'deploy to github pages'
 
 # 部署到 https://WX-DongXing.github.io/gif-viewer
 git push -f git@github.com:WX-DongXing/gif-viewer.git master:gh-pages
+
+rm -rf .git
 
 cd -

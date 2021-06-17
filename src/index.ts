@@ -174,7 +174,6 @@ class GifViewer implements GifHandler {
     }
   }
 
-
   /**
    * 解码图像数据
    * @param bufferArray 图像数据
@@ -184,6 +183,9 @@ class GifViewer implements GifHandler {
    * @param graphicsControlExtension 图像控制扩展
    */
   decodeImageDataBuffer(bufferArray: Uint8Array, minCodeSize: number, colorTable: RGB[], imageDescriptor: ImageDescriptor, graphicsControlExtension?: Extension): ImageData {
+
+    // 数据视图
+    const dataView: DataView = new DataView(bufferArray.buffer)
 
     // 子图像宽高
     const { width, height } = imageDescriptor
@@ -212,6 +214,12 @@ class GifViewer implements GifHandler {
     // 字节长度
     let byteSize = 0
 
+    // 读取索引
+    let readIndex = 0
+
+    // 字节剩余值
+    let reserved = ''
+
     // 重置编码表
     const initCodeTable = (): void=> {
       // 默认编码表
@@ -239,26 +247,28 @@ class GifViewer implements GifHandler {
     // 初始化编码表
     initCodeTable()
 
-    // 解析为图像字节数组
-    const byteArray: string[] = bufferArray.reduce((acc: string[], byte: number) => {
-      const bytes = byte.toString(2).padStart(8, '0').split('')
-      while (bytes.length) {
-        acc.push(bytes.pop())
-      }
-      return acc
-    }, [])
-
-    while (byteArray.length) {
-
+    while (readIndex !== dataView.byteLength) {
       // 二进制字节
-      let byteValue: string
 
-      (function (size: number) {
-        while (size) {
-          byteValue = byteArray.shift() + (byteValue ?? '')
-          size -= 1
+      if (reserved.length < byteSize) {
+
+        if (readIndex + 1 === dataView.byteLength) {
+          const byte = dataView.getUint8(readIndex).toString(2).padStart(8, '0')
+          reserved = byte + reserved
+          readIndex += 1
+        } else {
+          const byte = dataView.getUint16(readIndex, true).toString(2).padStart(16, '0')
+          reserved = byte + reserved
+          readIndex += 2
         }
-      })(byteSize)
+      }
+
+      const byteValue = new Array(byteSize).fill(null).reduce((acc: string, _, i: number) => {
+        acc = reserved.substr(-(i + 1), 1) + acc
+        return acc
+      }, '')
+
+      reserved = reserved.substr(0, reserved.length - byteSize)
 
       // 十进制字节
       const code: number = parseInt(byteValue, 2)
