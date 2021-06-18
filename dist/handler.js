@@ -347,7 +347,7 @@ app.component('color-table', {
       colors.value?.forEach((color, index) => {
         const column = Math.floor(index * 16 / 256)
         const row = (index * 16) % 256
-        const { r, g, b} = color
+        const [r, g, b] = color.split(',')
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
         ctx.fillRect(row, column * 16, 16, 16);
       })
