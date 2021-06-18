@@ -1,6 +1,6 @@
 import { decimalToBinary, formatColors, isGif } from './utils'
 import {
-  BufferConcat, ColorTable,
+  ColorTable,
   Gif, GifHandler, Header,
   Image, ImageDescriptor,
   LogicalScreenDescriptor,
@@ -223,7 +223,7 @@ class GifViewer implements GifHandler {
     // 重置编码表
     const initCodeTable = (): void=> {
       // 默认编码表
-      codeTable = new Map(Object.keys(colorTable).map((key: string) => [parseInt(key), key]))
+      codeTable = new Map(Object.keys(colorTable).map((key: string) => [+key, key]))
 
       // 以最小代码尺度，采用幂等计算特殊码的值，但是存在空余的情况
       codeTableMaxIndex = Math.pow(2, minCodeSize)
@@ -318,22 +318,27 @@ class GifViewer implements GifHandler {
       }
     }
 
-    const imageDataArray = output.split(',').reduce((acc: number[], colorIndex: string) => {
-      const colors = colorTableMap.get(colorIndex)
-      if (colors) {
-        const { r, g, b } = colors
-        const a = (packedField?.transparentColorFlag === 1 && parseInt(colorIndex) === transparentColorIndex) ? 0 : 255
-        acc.push(...[r, g, b, a])
-      }
-      return acc
-    }, [])
+    let colors = ''
 
-    if (imageDataArray.length !== width * height * 4) {
-      imageDataArray.push(...new Array(((width * height * 4) - imageDataArray.length) / 4).fill([0, 0, 0, 255]).flat())
+    const colorIndexList: string[] = output.split(',')
+
+    for (let i = 0; i < colorIndexList.length; i++) {
+      const colorIndex = colorIndexList[i]
+      const color = colorTableMap.get(colorIndex)
+      if (color) {
+        const a = (packedField?.transparentColorFlag === 1 && +colorIndex === transparentColorIndex) ? 0 : 255
+        colors += ((i === 1 ? '' : ',') + color + `,${a}`)
+      }
+    }
+
+    const colorArray = colors.split(',').map(color => +color)
+
+    if (colorArray.length !== width * height * 4) {
+      colorArray.push(...new Array(((width * height * 4) - colorArray.length) / 4).fill([0, 0, 0, 255]).flat())
       console.log('ImageData not fit')
     }
 
-    const imageData: ImageData = new ImageData(Uint8ClampedArray.from(imageDataArray), width, height)
+    const imageData: ImageData = new ImageData(Uint8ClampedArray.from(colorArray), width, height)
 
     return imageData
   }
@@ -374,17 +379,22 @@ class GifViewer implements GifHandler {
     byteLength += 1
 
     // 图像数据总字节数
-    const imageDataBuffersLength: number = arrayBuffers.reduce((acc: number, cur: ArrayBuffer) => {
-      acc += cur.byteLength
-      return acc
-    }, 0)
+    let imageDataBuffersLength = 0
+
+    for (let i = 0; i < arrayBuffers.length; i++) {
+      imageDataBuffersLength += arrayBuffers[i].byteLength
+    }
 
     // 总图像数据
-    const { uintArray }: BufferConcat = arrayBuffers.reduce((acc: BufferConcat, cur: ArrayBuffer) => {
-      acc.uintArray.set(new Uint8Array(cur), acc.byteLength)
-      acc.byteLength += cur.byteLength
-      return acc
-    }, { uintArray: new Uint8Array(imageDataBuffersLength), byteLength: 0 })
+    const uintArray: Uint8Array = new Uint8Array(imageDataBuffersLength)
+
+    let uintBufferLength = 0
+
+    for (let i = 0; i < arrayBuffers.length; i++) {
+      const uintBuffer = new Uint8Array(arrayBuffers[i])
+      uintArray.set(uintBuffer, uintBufferLength)
+      uintBufferLength += uintBuffer.byteLength
+    }
 
     // 解码图像数据
     const imageData: ImageData = this.decodeImageDataBuffer(uintArray, minCodeSize, colorTable, imageDescriptor, graphicsControlExtension)

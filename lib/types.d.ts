@@ -19,11 +19,7 @@ interface LogicalScreenDescriptor extends Buffer {
     backgroundColorIndex: number;
     pixelAspectRatio: number;
 }
-interface RGB {
-    r: number;
-    g: number;
-    b: number;
-}
+declare type RGB = string;
 interface ColorTable extends Buffer {
     colors: RGB[];
 }

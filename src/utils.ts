@@ -22,21 +22,17 @@ function decimalToBinary(value: number): number[] {
  * @param colorArray
  */
 function formatColors(colorArray: Uint8Array): RGB[] {
-  return colorArray.reduce((acc: RGB[], cur: number, index: number) => {
-    const i = index % 3
-    switch (i) {
-      case 0:
-        acc.push({ r: cur, g: 0, b: 0 })
-        break
-      case 1:
-        Object.assign(acc[acc.length - 1], { g: cur })
-        break
-      case 2:
-        Object.assign(acc[acc.length - 1], { b: cur })
-        break
+  const colors: RGB[] = []
+  for (let i = 0; i < colorArray.length; i++) {
+    const value = colorArray[i]
+    const index = i % 3
+    if (index === 0) {
+      colors.push(String(value))
+    } else {
+      colors[Math.floor(i / 3)] += `,${value}`
     }
-    return acc
-  }, [])
+  }
+  return colors
 }
 
 export {
