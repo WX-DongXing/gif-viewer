@@ -67,7 +67,6 @@ main {
   color: limegreen;
 }
 
-
 .panel-content {
   width: 100%;
   height: 100%;
@@ -110,6 +109,11 @@ main {
 
 .panel-image .panel + .panel {
   margin: 24px 0 0 0;
+}
+
+.panel-icon {
+  height: 18px;
+  cursor: pointer;
 }
 
 .panel-double {

@@ -74,7 +74,12 @@ const app = createApp({
         </div>
 
         <div class="panel none-flex" v-if="gif?.images?.length > 1">
-          <p class="panel-header">Player</p>
+          <div class="row-between">
+            <p class="panel-header">Player</p>
+            <div class="row-start">
+              <img class="panel-icon" :src="ICON_TYPE.get(icon)" alt="">
+            </div>
+          </div>
           <div class="panel-content center panel-color-table">
             <gif-player
              :descriptor="gif.logicalScreenDescriptor"
@@ -300,7 +305,12 @@ const app = createApp({
       file: null,
       gif: null,
       globalColorTable: null,
-      time: 0
+      time: 0,
+      icon: 0,
+      ICON_TYPE: new Map([
+        [0, './play.svg'],
+        [1, './pause.svg']
+      ])
     })
 
     const fileSize = computed(() => {
