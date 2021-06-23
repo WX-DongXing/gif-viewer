@@ -58,10 +58,10 @@ const APPLICATION_XML_DATA = 'XMP DataXMP'
 const TRAILER_FLAG = 59
 
 // 清除码
-const CLEAR_CODE = 'CC'
+const CLEAR_CODE = -1
 
 // 结束码
-const END_OF_INFORMATION = 'EOI'
+const END_OF_INFORMATION = -2
 
 export {
   GIF_VERSION,

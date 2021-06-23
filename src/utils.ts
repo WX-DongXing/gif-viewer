@@ -27,9 +27,9 @@ function formatColors(colorArray: Uint8Array): RGB[] {
     const value = colorArray[i]
     const index = i % 3
     if (index === 0) {
-      colors.push(String(value))
+      colors.push(new Uint8Array([value, 0, 0]))
     } else {
-      colors[Math.floor(i / 3)] += `,${value}`
+      colors[Math.floor(i / 3)][index] = value
     }
   }
   return colors

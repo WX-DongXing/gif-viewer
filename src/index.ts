@@ -197,7 +197,7 @@ class GifViewer implements GifHandler {
     const colorTableMap = new Map(Object.entries(colorTable))
 
     // 编码表
-    let codeTable: Map<number, string>
+    let codeTable: Map<number, Array<number>>
 
     // 编码表最大索引值
     let codeTableMaxIndex = 0
@@ -205,8 +205,10 @@ class GifViewer implements GifHandler {
     // 编码历史
     let codes: Map<number, number>
 
+    let filledLength = 0
+
     // 解码输出
-    let output = ''
+    const output: Uint8Array = new Uint8Array(width * height)
 
     // 索引
     let index = 0
@@ -223,16 +225,16 @@ class GifViewer implements GifHandler {
     // 重置编码表
     const initCodeTable = (): void=> {
       // 默认编码表
-      codeTable = new Map(Object.keys(colorTable).map((key: string) => [+key, key]))
+      codeTable = new Map(Object.keys(colorTable).map((key: string) => [+key, [+key]]))
 
       // 以最小代码尺度，采用幂等计算特殊码的值，但是存在空余的情况
       codeTableMaxIndex = Math.pow(2, minCodeSize)
 
       // 设置清除码
-      codeTable.set(codeTableMaxIndex, CLEAR_CODE)
+      codeTable.set(codeTableMaxIndex, [CLEAR_CODE])
 
       // 设置结束码
-      codeTable.set(codeTableMaxIndex += 1, END_OF_INFORMATION)
+      codeTable.set(codeTableMaxIndex += 1, [END_OF_INFORMATION])
 
       // 设置字节长度
       byteSize = minCodeSize + 1
@@ -246,6 +248,8 @@ class GifViewer implements GifHandler {
 
     // 初始化编码表
     initCodeTable()
+
+    const t1 = performance.now()
 
     while (readIndex !== dataView.byteLength) {
       // 二进制字节
@@ -274,13 +278,13 @@ class GifViewer implements GifHandler {
       const code: number = parseInt(byteValue, 2)
 
       // 当前 code 对应颜色索引值
-      const colorIndex: string = codeTable.get(code)
+      const colorIndex = codeTable.get(code) ?? []
 
       // 如果对应清除码，则重置编码表
-      if (colorIndex === CLEAR_CODE) {
+      if (colorIndex.includes(CLEAR_CODE)) {
         initCodeTable()
         continue
-      } else if (colorIndex === END_OF_INFORMATION) {
+      } else if (colorIndex.includes(END_OF_INFORMATION)) {
         // 如果对应结束码，结束解码
         break
       }
@@ -290,22 +294,22 @@ class GifViewer implements GifHandler {
 
       // 如果为第一个值，直接将颜色索引输出
       if (index === 0) {
-        output += `,${colorIndex}`
+        output.set(colorIndex, filledLength)
+        filledLength += colorIndex.length
       } else {
+        const P = codeTable.get(codes.get(index - 1))
 
         if (codeTable.has(code)) {
-          const P = codeTable.get(codes.get(index - 1))
-          const [K] = colorIndex.split(',') || []
-          const R = (P && K) ? `${P},${K}` : (P || K)
-          codeTable.set(codeTableMaxIndex += 1, R)
-          output += `,${colorIndex}`
+          const [K] = colorIndex
+          codeTable.set(codeTableMaxIndex += 1, P.concat(K))
+          output.set(colorIndex, filledLength)
+          filledLength += colorIndex.length
         } else {
-
-          const P = codeTable.get(codes.get(index - 1))
-          const [K] = P.split(',') || []
-          const R = (P && K) ? `${P},${K}` : (P || K)
+          const [K] = P
+          const R = P.concat(K)
           codeTable.set(codeTableMaxIndex += 1, R)
-          output += `,${R}`
+          output.set(R, filledLength)
+          filledLength += R.length
         }
       }
 
@@ -318,29 +322,19 @@ class GifViewer implements GifHandler {
       }
     }
 
-    let colors = ''
+    const colorArray = new Uint8ClampedArray(output.length * 4)
 
-    const colorIndexList: string[] = output.split(',')
+    const transparentColorFlag = packedField?.transparentColorFlag === 1
 
-    for (let i = 0; i < colorIndexList.length; i++) {
-      const colorIndex = colorIndexList[i]
-      const color = colorTableMap.get(colorIndex)
-      if (color) {
-        const a = (packedField?.transparentColorFlag === 1 && +colorIndex === transparentColorIndex) ? 0 : 255
-        colors += ((i === 1 ? '' : ',') + color + `,${a}`)
-      }
+    for (let i = 0; i < output.length; i++) {
+      const colorIndex: number = output[i]
+      const color: Uint8Array = colorTableMap.get(String(colorIndex))
+      const transparentColor = (transparentColorFlag && +colorIndex === transparentColorIndex) ? 0 : 255
+      colorArray.set(color, i * 4)
+      colorArray[i * 4 + 3] = transparentColor
     }
 
-    const colorArray = colors.split(',').map(color => +color)
-
-    if (colorArray.length !== width * height * 4) {
-      colorArray.push(...new Array(((width * height * 4) - colorArray.length) / 4).fill([0, 0, 0, 255]).flat())
-      console.log('ImageData not fit')
-    }
-
-    const imageData: ImageData = new ImageData(Uint8ClampedArray.from(colorArray), width, height)
-
-    return imageData
+    return new ImageData(colorArray, width, height)
   }
 
   /**

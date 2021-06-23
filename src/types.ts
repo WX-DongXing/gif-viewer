@@ -24,7 +24,7 @@ interface LogicalScreenDescriptor extends Buffer {
   pixelAspectRatio: number
 }
 
-type RGB = string
+type RGB = Uint8Array
 
 interface ColorTable extends Buffer {
   colors: RGB[]
