@@ -193,13 +193,22 @@ const app = createApp({
       <div class="row-start">
         <div
           v-for="(image, index) of gif?.images"
-          :key="index"
+          :key="filename + index"
           class="panel-image"
          >
           <div class="panel none-flex">
-            <p class="panel-header">子图像 - {{ index + 1 }}</p>
+            <div class="row-between">
+              <p class="panel-header">子图像 - {{ index + 1 }}</p>
+              <div class="row-start">
+                <img class="panel-icon" src="./download.svg" alt="" @click="handleDownload(index)">
+              </div>
+            </div>
             <div class="panel-content center panel-sub-image">
-              <sub-image :image="image"></sub-image>
+              <sub-image
+                :filename="filename"
+                :image="image"
+                :ref="subImage => subImage && subImages.push(subImage)"
+                :index="index" />
             </div>
           </div>
 
@@ -303,7 +312,7 @@ const app = createApp({
     const state = reactive({
       gifViewer: new GifViewer(),
       source: GIF_SOURCE,
-      img: null,
+      filename: 'demo',
       file: null,
       gif: null,
       globalColorTable: null,
@@ -313,7 +322,8 @@ const app = createApp({
       ICON_TYPE: new Map([
         [false, './play.svg'],
         [true, './pause.svg']
-      ])
+      ]),
+      subImages: []
     })
 
     const icon = computed(() => state.ICON_TYPE.get(state.isPlay))
@@ -333,7 +343,9 @@ const app = createApp({
 
     const handleFileChange = ({ target: { files } }) => {
       const [file] = files
+      state.filename = file.name.replace(/(.gif)$/, ''),
       state.gif = null
+      state.subImages = []
       state.source = URL.createObjectURL(file)
       nextTick(async () => {
         state.isPlay = true
@@ -346,6 +358,11 @@ const app = createApp({
       state.player.toggle()
     }
 
+    const handleDownload = (index) => {
+      const subImage = state.subImages[index]
+      subImage.download()
+    }
+
     onMounted(async () => {
       const buffer = await (await fetch(GIF_SOURCE)).arrayBuffer()
       await decode(buffer)
@@ -356,7 +373,8 @@ const app = createApp({
       fileSize,
       icon,
       handleFileChange,
-      handleToggle
+      handleToggle,
+      handleDownload
     }
   }
 })
@@ -493,11 +511,14 @@ app.component('sub-image', {
     <canvas ref="canvas"></canvas>
   `,
   props: {
-    image: null
+    image: null,
+    filename: '',
+    index: 0
   },
   setup (props) {
+    const { image, filename, index } = toRefs(props)
     const canvas = ref(null)
-    const { image } = toRefs(props)
+    const ctx = ref(null)
     const MAX_WIDTH = 208
     const MAX_HEIGHT = 176
     const {
@@ -508,9 +529,9 @@ app.component('sub-image', {
     onMounted(() => {
       canvas.value.width = width
       canvas.value.height = height
-      const ctx = canvas.value.getContext('2d')
-      ctx.clearRect(0, 0, width, height)
-      ctx.putImageData(imageData, 0, 0)
+      ctx.value = canvas.value.getContext('2d')
+      ctx.value.clearRect(0, 0, width, height)
+      ctx.value.putImageData(imageData, 0, 0)
 
       if (width > MAX_WIDTH || height > MAX_HEIGHT) {
         const widthRate = MAX_WIDTH / width
@@ -521,8 +542,17 @@ app.component('sub-image', {
       }
     })
 
+    const download = () => {
+      const dataURL = canvas.value.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.download = `${filename.value}-${index.value}.png`
+      link.href = dataURL
+      link.click()
+    }
+
     return {
-      canvas
+      canvas,
+      download
     }
   }
 })
