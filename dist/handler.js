@@ -422,11 +422,14 @@ app.component('gif-player', {
 
       const run = async () => {
         for (const { graphicsControlExtension, imageDescriptor, subImageData } of images.value) {
-          ctx.clearRect(0, 0, width, height)
           const { delayTime, packedField: { disposalMethod } } = graphicsControlExtension
-          const { top, left } = imageDescriptor
+          if (disposalMethod === 2) {
+            ctx.clearRect(0, 0, width, height)
+          }
+          const { top, left, width: dWidth, height: dHeight} = imageDescriptor
           const { imageData } = subImageData
-          ctx.putImageData(imageData, left, top)
+          const image = await createImageBitmap(imageData)
+          ctx.drawImage(image, left, top, dWidth, dHeight)
           await sleep(delayTime)
         }
         times ++
