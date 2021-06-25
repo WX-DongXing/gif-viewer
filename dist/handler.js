@@ -422,6 +422,7 @@ app.component('gif-player', {
 
       const run = async () => {
         for (const { graphicsControlExtension, imageDescriptor, subImageData } of images.value) {
+          ctx.clearRect(0, 0, width, height)
           const { delayTime, packedField: { disposalMethod } } = graphicsControlExtension
           const { top, left } = imageDescriptor
           const { imageData } = subImageData

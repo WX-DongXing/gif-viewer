@@ -334,7 +334,37 @@ class GifViewer implements GifHandler {
       colorArray[i * 4 + 3] = transparentColor
     }
 
-    return new ImageData(colorArray, width, height)
+    if (imageDescriptor.packedField.interlaceFlag === 0) {
+      return new ImageData(colorArray, width, height)
+    } else {
+
+      // pass 1 从第0行开始，每隔8行扫描一次
+      // pass 2 从第4行开始，每隔8行扫描一次
+      // pass 3 从第2行开始，每隔4行扫描一次
+      // pass 4 从第1行开始，每隔2行扫描一次
+
+      const pass = [0, 4, 2 , 1]
+
+      const split = [8, 8, 4, 2]
+
+      const interlaceColorArray = new Uint8ClampedArray(colorArray.length)
+
+      let renderLength = 0
+
+      for (let i = 0; i < pass.length; i++) {
+
+        for (let j = pass[i]; j < height; j += split[i]) {
+
+          const data = colorArray.slice(renderLength, renderLength += (width * 4))
+
+          interlaceColorArray.set(data, j * width * 4)
+
+        }
+
+      }
+
+      return new ImageData(interlaceColorArray, width, height)
+    }
   }
 
   /**
