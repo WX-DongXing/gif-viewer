@@ -1,4 +1,4 @@
-import {EXTENSION_TYPE, GIF_VERSION, TRAILER_FLAG} from './constant'
+import {EXTENSION_TYPE, TRAILER_FLAG} from './constant'
 
 interface Buffer {
   byteLength: number
@@ -96,11 +96,6 @@ interface ImageDescriptor extends Buffer {
   packedField: ImagePackedField
 }
 
-interface BufferConcat {
-  uintArray: Uint8Array
-  byteLength: number
-}
-
 class Gif implements Buffer {
   byteLength: number
   arrayBuffer: ArrayBuffer
@@ -128,6 +123,5 @@ export {
   Image,
   Application,
   ImageDescriptor,
-  SubImageData,
-  BufferConcat
+  SubImageData
 }

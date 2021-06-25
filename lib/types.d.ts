@@ -77,10 +77,6 @@ interface ImageDescriptor extends Buffer {
     height: number;
     packedField: ImagePackedField;
 }
-interface BufferConcat {
-    uintArray: Uint8Array;
-    byteLength: number;
-}
 declare class Gif implements Buffer {
     byteLength: number;
     arrayBuffer: ArrayBuffer;
@@ -94,4 +90,4 @@ declare class Gif implements Buffer {
 interface GifHandler {
     decode(file: Blob | ArrayBuffer | File): Promise<Gif | void>;
 }
-export { Gif, Header, GifHandler, LogicalScreenDescriptor, RGB, ColorTable, Extension, SubImage, Image, Application, ImageDescriptor, SubImageData, BufferConcat };
+export { Gif, Header, GifHandler, LogicalScreenDescriptor, RGB, ColorTable, Extension, SubImage, Image, Application, ImageDescriptor, SubImageData };
