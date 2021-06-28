@@ -249,8 +249,6 @@ class GifViewer implements GifHandler {
     // 初始化编码表
     initCodeTable()
 
-    const t1 = performance.now()
-
     while (readIndex !== dataView.byteLength) {
       // 二进制字节
 
@@ -325,6 +323,8 @@ class GifViewer implements GifHandler {
     const colorArray = new Uint8ClampedArray(output.length * 4)
 
     const transparentColorFlag = packedField?.transparentColorFlag === 1
+
+    console.log(output)
 
     for (let i = 0; i < output.length; i++) {
       const colorIndex: number = output[i]

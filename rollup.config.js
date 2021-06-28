@@ -3,7 +3,9 @@ import typescript from 'rollup-plugin-typescript2'
 import serve from 'rollup-plugin-serve'
 import livereload from 'rollup-plugin-livereload'
 
-const devPlugins = process.env.NODE_ENV === 'production' ? [] : [serve(), livereload()]
+const isProd = process.env.NODE_ENV === 'production'
+
+const devPlugins = isProd ? [] : [serve(), livereload()]
 
 export default {
   input: 'src/index.ts',
@@ -12,12 +14,12 @@ export default {
       file: 'lib/index.js',
       format: 'umd',
       name: 'GifViewer',
-      sourcemap: true
+      sourcemap: !isProd
     },
     {
       file: 'lib/index.esm.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: !isProd
     }
   ],
   plugins: [
