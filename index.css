@@ -1,0 +1,160 @@
+body {
+  width: 100vw;
+  height: 100vh;
+  background: whitesmoke;
+}
+
+header {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-content: center;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 24px;
+  background: white;
+}
+
+main {
+  width: 100vw;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+.gif-check {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+}
+
+.gif-wrap {
+  height: 176px !important;
+}
+
+.gif-example {
+  max-width: 100%;
+  max-height: 100%;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, .1);
+}
+
+.row {
+  margin-bottom: 24px;
+}
+
+.panel {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: space-between;
+  width: 240px;
+  min-height: 240px;
+  background: white;
+  border-radius: 4px;
+  box-sizing: border-box;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.panel-header {
+  flex: none;
+  height: 24px;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+}
+
+.panel-parse {
+  color: limegreen;
+}
+
+.panel-content {
+  width: 100%;
+  height: 100%;
+  min-height: 176px;
+}
+
+.panel-row {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 32px;
+}
+
+.panel-row span {
+  min-width: 40px;
+  margin-right: 12px;
+}
+
+.panel-row p {
+  margin: 0;
+  word-break: break-all;
+}
+
+.panel-image {
+  width: 240px;
+  height: 240px;
+  margin-bottom: 24px;
+  overflow: auto;
+}
+
+.panel-sub-image, .panel-color-table {
+  width: 208px;
+  height: 176px;
+}
+
+.panel-image + .panel-image, .panel + .panel {
+  margin-left: 24px;
+}
+
+.panel-image .panel + .panel {
+  margin: 24px 0 0 0;
+}
+
+.panel-icon {
+  height: 18px;
+  cursor: pointer;
+}
+
+.panel-double {
+  width: 480px;
+}
+
+.center {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+}
+
+.row-start {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: start;
+}
+
+.none-flex {
+  flex: none;
+}
+
+.full {
+  width: 100%;
+  height: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.full-height {
+  height: 100%;
+}
+
+
+
