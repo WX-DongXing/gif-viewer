@@ -1,5 +1,5 @@
 # Gif Viewer
-解析并展示 GIF 文件
+解析并展示 GIF 文件，[GIF格式及LZW编解码](https://www.notion.so/GIF-8a273f58d8a54d77a2e71c21422c2170)
 
 ![github][github] ![npm][npm] ![jetBrains][jetBrains]
 
@@ -9,15 +9,12 @@
 [npm]:https://img.shields.io/npm/v/gif-viewer?style=flat&logo=npm
 [jetBrains]:https://img.shields.io/badge/thanks-JetBrains-%23000?style=flat&logo=jetBrains
 
-## 细节
-https://www.notion.so/GIF-8a273f58d8a54d77a2e71c21422c2170
-
-## 安装
+### 安装
 ```bash
 yarn add gif-viewer
 ```
 
-## 使用
+### 使用
 ```javascript
 import GifViewer from 'gif-viewer'
 
@@ -26,7 +23,7 @@ const gifViewer = new GifViewer()
 const gif = await gifViewer.decode(Blob | ArrayBuffer | File)
 ```
 
-## 返回值
+### 格式
 ```javascript
 const gif = {
     arrayBuffer: ArrayBuffer(7295),
@@ -127,7 +124,7 @@ const gif = {
 }
 ```
 
-## 引用
+### 引用
 [GIF](https://zh.wikipedia.org/wiki/GIF)
 
 [What's In A GIF](http://giflib.sourceforge.net/whatsinagif/index.html)
@@ -137,3 +134,9 @@ const gif = {
 [GIFOLOGY](http://www.theimage.com/animation/toc/toc.html)
 
 [Graphics Interchange Format℠ Version 89a](https://web.archive.org/web/20160426201122/http://qalle.net/gif89a.php)
+
+
+### License
+[MIT](http://opensource.org/licenses/MIT)
+
+Copyright (c) 2021 Dong Xing

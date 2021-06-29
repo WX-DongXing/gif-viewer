@@ -488,7 +488,6 @@
             };
             // 初始化编码表
             initCodeTable();
-            performance.now();
             while (readIndex !== dataView.byteLength) {
                 // 二进制字节
                 if (reserved.length < byteSize) {
@@ -553,6 +552,7 @@
             }
             var colorArray = new Uint8ClampedArray(output.length * 4);
             var transparentColorFlag = (packedField === null || packedField === void 0 ? void 0 : packedField.transparentColorFlag) === 1;
+            console.log(output);
             for (var i = 0; i < output.length; i++) {
                 var colorIndex = output[i];
                 var color = colorTableMap.get(String(colorIndex));
@@ -788,4 +788,3 @@
     return GifViewer;
 
 })));
-//# sourceMappingURL=index.js.map
